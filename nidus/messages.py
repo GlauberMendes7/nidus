@@ -53,6 +53,7 @@ class AppendEntriesResponse:
     success: bool
     match_index: int
     msg_type: str = "append_entries_response"
+    life_time = int
 
 
 @dataclass
@@ -62,6 +63,7 @@ class VoteRequest:
     last_log_index: int
     last_log_term: int
     msg_type: str = "vote_request"
+    life_time = int
 
 
 @dataclass
