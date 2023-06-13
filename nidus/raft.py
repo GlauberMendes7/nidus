@@ -200,7 +200,7 @@ class RaftNode(Actor):
     def handle_vote_request(self, req):
         self.restart_election_timer()
 
-        if req.term < self.state.current_term or req.life_time < self.state.life_time:
+        if req.term < self.state.current_term:
             vote_msg = VoteResponse(self.node_id, self.state.current_term, False)
             self.log(
                 f"vote request from {req.candidate} granted=False (candidate term lower than self)"
