@@ -271,13 +271,20 @@ class RaftNode(Actor):
             if req.empty:
                 append_entries_msg.entries = []
             self.network.send(peer, append_entries_msg)
-
-        target = lambda addr: self.network.send(addr, HeartbeatRequest())
-        self.heartbeat_timer = Timer(
-            self.heartbeat_interval, target, args=[self.node_id]
-        )
-        self.heartbeat_timer.start()
-
+        
+        if self.state.phase:
+            target = lambda addr: self.network.send(addr, HeartbeatRequest())
+            self.heartbeat_timer = Timer(
+                self.heartbeat_interval, target, args=[self.node_id]
+            )
+            self.heartbeat_timer.start()
+        else:
+            target = lambda addr: self.network.send(addr, HeartbeatRequest())
+            self.heartbeat_timer = Timer(
+                self.heartbeat_interval + 0.25, target, args=[self.node_id]
+            )
+            self.heartbeat_timer.start()
+        
     def handle_election_request(self, req):
         self.log(f"haven't heard from leader or election failed; beginning election and my lifetime is: {self.life_time}")
         self.state.become_candidate(self.node_id)
