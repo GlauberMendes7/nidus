@@ -272,7 +272,7 @@ class RaftNode(Actor):
                 append_entries_msg.entries = []
             self.network.send(peer, append_entries_msg)
         
-        if self.state.phase:
+        if self.state.phase == RaftState.PHASE1:
             target = lambda addr: self.network.send(addr, HeartbeatRequest())
             self.heartbeat_timer = Timer(
                 self.heartbeat_interval, target, args=[self.node_id]
