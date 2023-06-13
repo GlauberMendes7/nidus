@@ -10,11 +10,17 @@ class RaftState:
     CANDIDATE = "CANDIDATE"
     FOLLOWER = "FOLLOWER"
 
+    PHASE1 = "PHASE 1"
+    PHASE2 = "PHASE 2"
+    PHASE3 = "PHASE 3"
+    PHASE4 = "PHASE 4"
+
     def __init__(self, storage_dir, node_id):
         self._storage_dir = storage_dir
         self._node_id = node_id
 
         self.status = self.FOLLOWER
+        self.phase = None
         self._current_term = 0
         self._voted_for = None
         self.votes = set()
@@ -88,6 +94,18 @@ class RaftState:
         self.current_term += 1
         self.voted_for = node_id
         self.votes = set([node_id])
+        
+    def become_phase1(self):
+        self.phase = self.PHASE1
+        
+    def become_phase2(self):
+        self.phase = self.PHASE2
+        
+    def become_phase3(self):
+        self.phase = self.PHASE3
+        
+    def become_phase4(self):
+        self.phase = self.PHASE4
 
     def append_entries(self, prev_index, prev_term, entries):
         return append_entries(self.log, prev_index, prev_term, entries)
