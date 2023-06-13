@@ -362,6 +362,21 @@ class RaftNode(Actor):
     def log(self, msg):
         logger.info(msg, extra={"node_id": self.node_id})
 
+    def changing_phases(self):
+        if self.life_time == 4:
+          self.state.become_phase1
+          print("O nó está em fase de criticidade energética 1")
+        if self.life_time == 3:
+          self.state.become_phase2
+          print("O nó está em fase de criticidade energética 2")
+        if self.life_time == 2:
+          self.state.become_phase3
+          print("O nó está em fase de criticidade energética 3")
+        if self.life_time == 1:
+          self.state.become_phase4
+          print("O nó está em fase de criticidade energética 4")
+    
+
     def __repr__(self):
         return f"""\
 <RaftNode {self.node_id} [{self.state.status}]
@@ -373,4 +388,5 @@ class RaftNode(Actor):
     match_index: {self.state.match_index}
     next_index: {self.state.next_index}
     log:{self.state.log}
+    life_time: {self.state.life_time}
 >"""
