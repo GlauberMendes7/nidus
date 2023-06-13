@@ -21,6 +21,7 @@ class RaftState:
 
         self.status = self.FOLLOWER
         self.phase = None
+        self.life_time = random.randint(1, 100)
         self._current_term = 0
         self._voted_for = None
         self.votes = set()
