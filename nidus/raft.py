@@ -286,7 +286,7 @@ class RaftNode(Actor):
             self.heartbeat_timer.start()
         
     def handle_election_request(self, req):
-        self.log(f"haven't heard from leader or election failed; beginning election and my lifetime is: {self.life_time}")
+        self.log(f"haven't heard from leader or election failed; beginning election. My lifetime is: {self.life_time} and my current phase is: {self.state.phase}")
         self.state.become_candidate(self.node_id)
 
         prev_index = len(self.state.log) - 1
