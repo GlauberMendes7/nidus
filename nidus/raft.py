@@ -46,19 +46,6 @@ class RaftNetwork:
 
     def send(self, node_id, msg):
         # node_id is key to a host,port raft node
-    
-          if self.life_time == 4:
-            self.state.become_phase1
-            print("O nó está em fase de criticidade energética 1")
-          if self.life_time == 3:
-            self.state.become_phase2
-            print("O nó está em fase de criticidade energética 2")
-          if self.life_time == 2:
-            self.state.become_phase3
-            print("O nó está em fase de criticidade energética 3")
-          if self.life_time == 1:
-            self.state.become_phase4
-            print("O nó está em fase de criticidade energética 4")
         if node_id in self.config["cluster"]:
             self.actor_system.send(self.config["cluster"][node_id], msg)
         else:  # it's a host,port addr (probably a client)
