@@ -71,6 +71,7 @@ class RaftNode(Actor):
         self.client_callbacks = {}
         self.leader_id = None
         self.restart_election_timer()
+        self.life_time = 4
 
     def handle_client_request(self, req):
         """
