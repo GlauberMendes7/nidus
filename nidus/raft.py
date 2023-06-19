@@ -45,11 +45,16 @@ class RaftNetwork:
         return self.actor_system._actors[addr]
 
     def send(self, node_id, msg):
+        self.instancia_changing_phases(self)
         # node_id is key to a host,port raft node
         if node_id in self.config["cluster"]:
             self.actor_system.send(self.config["cluster"][node_id], msg)
         else:  # it's a host,port addr (probably a client)
             self.actor_system.send(node_id, msg)
+        return
+
+    def instancia_changing_phases(self, self1):
+        pass
 
 
 class RaftNode(Actor):
@@ -71,7 +76,8 @@ class RaftNode(Actor):
         self.client_callbacks = {}
         self.leader_id = None
         self.restart_election_timer()
-        self.life_time = 4
+        self.life_time = random.randint(1, 100)
+        self.phase = None
 
     def handle_client_request(self, req):
         """
@@ -185,10 +191,10 @@ class RaftNode(Actor):
         # details on why this is.
         consensus_check_idx = self.state.match_index[sender]
         if (
-            self.has_consensus(consensus_check_idx)
-            and consensus_check_idx > -1
-            and self.state.log[consensus_check_idx].term == self.state.current_term
-            and self.state.commit_index < consensus_check_idx
+                self.has_consensus(consensus_check_idx)
+                and consensus_check_idx > -1
+                and self.state.log[consensus_check_idx].term == self.state.current_term
+                and self.state.commit_index < consensus_check_idx
         ):
             self.state.commit_index = self.state.match_index[sender]
             self.log(
@@ -200,7 +206,7 @@ class RaftNode(Actor):
     def handle_vote_request(self, req):
         self.restart_election_timer()
 
-        if req.term < self.state.current_term:
+        if req.term < self.state.current_term or req.life_time < self.life_time:
             vote_msg = VoteResponse(self.node_id, self.state.current_term, False)
             self.log(
                 f"vote request from {req.candidate} granted=False (candidate term lower than self)"
@@ -209,8 +215,8 @@ class RaftNode(Actor):
             return
 
         if (
-            req.term > self.state.current_term
-            and self.state.status != RaftState.FOLLOWER
+                req.term > self.state.current_term
+                and self.state.status != RaftState.FOLLOWER
         ):
             self.state.current_term = req.term
             self.demote()
@@ -222,15 +228,15 @@ class RaftNode(Actor):
         # votedFor is null or candidateId, and candidate’s log is atleast as up-to-date
         # as receiver’s log, grant vote (§5.2, §5.4)
         if (
-            self.state.voted_for is None
-            or self.state.voted_for == req.candidate
-            and (
+                self.state.voted_for is None
+                or self.state.voted_for == req.candidate
+                and (
                 req.last_log_term > last_log_term
                 or (
-                    req.last_log_index >= last_log_index
-                    and req.last_log_term == last_log_term
+                        req.last_log_index >= last_log_index
+                        and req.last_log_term == last_log_term
                 )
-            )
+        )
         ):
             vote_msg = VoteResponse(self.node_id, self.state.current_term, True)
             self.state.voted_for = req.candidate
@@ -271,7 +277,7 @@ class RaftNode(Actor):
             if req.empty:
                 append_entries_msg.entries = []
             self.network.send(peer, append_entries_msg)
-        
+
         if self.state.phase == RaftState.PHASE1:
             target = lambda addr: self.network.send(addr, HeartbeatRequest())
             self.heartbeat_timer = Timer(
@@ -279,14 +285,19 @@ class RaftNode(Actor):
             )
             self.heartbeat_timer.start()
         else:
-            target = lambda addr: self.network.send(addr, HeartbeatRequest())
+            target = lambda addr: self.network.send(addr, HeartbeatRequest(heartbeat_decrease=True))
             self.heartbeat_timer = Timer(
                 self.heartbeat_interval + 0.25, target, args=[self.node_id]
             )
             self.heartbeat_timer.start()
-        
+
+    def handle_designate_proxy(self, req):
+        pass
+
     def handle_election_request(self, req):
-        self.log(f"haven't heard from leader or election failed; beginning election. My lifetime is: {self.life_time} and my current phase is: {self.state.phase}")
+        self.changing_phases()
+        self.log(
+            f"haven't heard from leader or election failed; beginning election. Lifetime is: {self.life_time} and current phase is: {self.state.phase}")
         self.state.become_candidate(self.node_id)
 
         prev_index = len(self.state.log) - 1
@@ -329,8 +340,8 @@ class RaftNode(Actor):
 
             # notify the client of the result
             if (
-                self.state.status == RaftState.LEADER
-                and self.client_callbacks.get(self.state.last_applied) is not None
+                    self.state.status == RaftState.LEADER
+                    and self.client_callbacks.get(self.state.last_applied) is not None
             ):
                 client_addr = self.client_callbacks.pop(self.state.last_applied)
                 self.network.send(client_addr, ClientResponse(result))
@@ -341,6 +352,9 @@ class RaftNode(Actor):
         self.election_timer.cancel()
         # should we skip the send to ourself and just invoke?
         self.network.send(self.node_id, heartbeat_request)
+        if self.state.phase == RaftState.PHASE3 and self.state.phase == RaftState.PHASE4:
+            print("nó em fase de criticidade 3 ou mais, revertendo para follower")
+            self.state.become_follower()
 
     def demote(self):
         self.log("reverting to follower")
@@ -370,19 +384,18 @@ class RaftNode(Actor):
         logger.info(msg, extra={"node_id": self.node_id})
 
     def changing_phases(self):
-        if self.life_time == 4:
-          self.state.become_phase1
-          print("O nó está em fase de criticidade energética 1")
-        if self.life_time == 3:
-          self.state.become_phase2
-          print("O nó está em fase de criticidade energética 2")
-        if self.life_time == 2:
-          self.state.become_phase3
-          print("O nó está em fase de criticidade energética 3")
-        if self.life_time == 1:
-          self.state.become_phase4
-          print("O nó está em fase de criticidade energética 4")
-    
+        if self.life_time >= 75:
+            self.state.become_phase1()
+            print("O nó esta em fase de criticidade energética 1")
+        if self.life_time >= 50 and self.life_time < 75:
+            self.state.become_phase2()
+            print("O nó esta em fase de criticidade energética 2")
+        if self.life_time > 20 and self.life_time < 50:
+            self.state.become_phase3()
+            print("O nó esta em fase de criticidade energética 3")
+        if self.life_time <= 20:
+            self.state.become_phase4()
+            print("O nó esta em fase de criticidade energética 4")
 
     def __repr__(self):
         return f"""\

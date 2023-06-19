@@ -52,8 +52,9 @@ class AppendEntriesResponse:
     term: int
     success: bool
     match_index: int
-    msg_type: str = "append_entries_response"
     life_time = int
+    msg_type: str = "append_entries_response"
+
 
 
 @dataclass
@@ -63,7 +64,8 @@ class VoteRequest:
     last_log_index: int
     last_log_term: int
     msg_type: str = "vote_request"
-    life_time = int
+    life_time: int
+
 
 
 @dataclass
@@ -78,6 +80,13 @@ class VoteResponse:
 class HeartbeatRequest:
     empty: bool = False
     msg_type: str = "heartbeat_request"
+    heartbeat_decrease: bool = False
+
+@dataclass
+class DesignateProxy:
+    sender: str
+    term: int
+    msg_type: str = "designate_proxy"
 
 
 @dataclass
@@ -93,6 +102,7 @@ message_classes = [
     VoteRequest,
     VoteResponse,
     HeartbeatRequest,
+    DesignateProxy,
     ElectionRequest,
 ]
 

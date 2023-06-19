@@ -1,5 +1,6 @@
 import os
 import struct
+import random
 
 from nidus.log import Log, append_entries
 
@@ -9,6 +10,7 @@ class RaftState:
     LEADER = "LEADER"
     CANDIDATE = "CANDIDATE"
     FOLLOWER = "FOLLOWER"
+    PROXY = "PROXY"
 
     PHASE1 = "PHASE 1"
     PHASE2 = "PHASE 2"
@@ -20,8 +22,8 @@ class RaftState:
         self._node_id = node_id
 
         self.status = self.FOLLOWER
-        self.phase = None
-        self.life_time = random.randint(1, 100)
+        self.phase = 0
+        self.life_time = 1
         self._current_term = 0
         self._voted_for = None
         self.votes = set()
@@ -95,7 +97,10 @@ class RaftState:
         self.current_term += 1
         self.voted_for = node_id
         self.votes = set([node_id])
-        
+
+    def become_proxy(self):
+        self.status = self.PROXY
+
     def become_phase1(self):
         self.phase = self.PHASE1
         
