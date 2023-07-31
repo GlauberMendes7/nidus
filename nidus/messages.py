@@ -64,7 +64,7 @@ class VoteRequest:
     last_log_index: int
     last_log_term: int
     msg_type: str = "vote_request"
-    life_time: int
+    life_time = int
 
 
 
