@@ -48,7 +48,7 @@ class TCPSystem:
         self._inboxes[addr] = inbox
         self._shutdown_events[addr] = shutdown_evt
         self._server_threads[addr] = server_thread
-
+        print(f"Created node: {self._actors[addr].node_id}, capacity:{self._actors[addr].life_time}")
         server_thread.start()
         return addr
 
@@ -172,6 +172,7 @@ class SyncSystem:
 
 class Actor:
     def _handle_message(self, msg):
+
         handler = getattr(self, f"handle_{msg.msg_type}")
         handler(msg)
 

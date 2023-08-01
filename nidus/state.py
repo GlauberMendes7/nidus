@@ -92,8 +92,9 @@ class RaftState:
         self.status = self.FOLLOWER
         self.voted_for = None
 
-    def become_candidate(self, node_id):
+    def become_candidate(self, node_id, life_time):
         self.status = self.CANDIDATE
+        self.life_time = life_time
         self.current_term += 1
         self.voted_for = node_id
         self.votes = set([node_id])

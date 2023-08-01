@@ -52,7 +52,7 @@ class AppendEntriesResponse:
     term: int
     success: bool
     match_index: int
-    life_time = int
+    life_time : int
     msg_type: str = "append_entries_response"
 
 
@@ -63,8 +63,9 @@ class VoteRequest:
     candidate: str
     last_log_index: int
     last_log_term: int
+    life_time : int
     msg_type: str = "vote_request"
-    life_time = int
+
 
 
 
@@ -73,7 +74,9 @@ class VoteResponse:
     sender: str
     term: int
     vote_granted: bool
+    life_time: int
     msg_type: str = "vote_response"
+    cause: str = "Requirements problem"
 
 
 @dataclass
