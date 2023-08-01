@@ -18,6 +18,16 @@ from nidus.state import RaftState
 
 logger = logging.getLogger("node_logger")
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 class RaftNetwork:
     """
@@ -159,8 +169,8 @@ class RaftNode(Actor):
     def handle_append_entries_response(self, res):
         # If RPC request or response contains term T > currentTerm:
         # set currentTerm = T, convert to follower (§5.1)
-        if self.life_time < res.life_time:
-            self.demote()
+        # if self.life_time < res.life_time:
+        #     self.demote()
 
         if self.state.status != RaftState.LEADER:
             return
@@ -205,9 +215,10 @@ class RaftNode(Actor):
 
     def handle_vote_request(self, req):
         self.restart_election_timer()
+        
         if req.life_time <= self.life_time:
             vote_msg = VoteResponse(self.node_id, self.state.current_term, False, self.life_time)
-            self.log(f"vote request from {req.candidate}:{req.life_time} granted=False (candidate life_time lower than self)" )
+            self.log(f"vote request from {req.candidate}:{req.life_time} granted=False (candidate life_time lower than my self: {self.life_time})" )
             self.network.send(req.candidate, vote_msg)
             return
 
@@ -229,7 +240,7 @@ class RaftNode(Actor):
 
         # is this ok to default to?
         self.log(
-            f"vote request from {req.candidate} granted=False (vote already granted or log not as up-to-date)"
+            f"vote request from {req.candidate} granted=False (vote already granted or life_time lower than self {self.life_time})"
         )
         vote_msg = VoteResponse(self.node_id, self.state.current_term, False, self.life_time)
         self.network.send(req.candidate, vote_msg)
@@ -248,7 +259,7 @@ class RaftNode(Actor):
 
         if len(self.state.votes) > (len(self.peers) + 1) // 2:
             self.log(
-                f"majority of votes granted {self.state.votes}, transitoning to leader with {self.life_time} autonomy"
+                f"{bcolors.OKCYAN} majority of votes granted {self.state.votes}, transitoning to leader with {self.life_time} autonomy{bcolors.ENDC}"
             )
             self.promote()
 
@@ -337,9 +348,9 @@ class RaftNode(Actor):
         self.election_timer.cancel()
         # should we skip the send to ourself and just invoke?
         self.network.send(self.node_id, heartbeat_request)
-        if self.state.phase == RaftState.PHASE3 and self.state.phase == RaftState.PHASE4:
-            print("nó em fase de criticidade 3 ou mais, revertendo para follower")
-            self.state.become_follower()
+        # if self.state.phase == RaftState.PHASE3 or self.state.phase == RaftState.PHASE4:
+        #     print("nó em fase de criticidade 3 ou mais, revertendo para follower")
+        #     self.state.become_follower()
 
     def demote(self):
         self.log("reverting to follower")
