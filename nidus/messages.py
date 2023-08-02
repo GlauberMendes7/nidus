@@ -67,8 +67,6 @@ class VoteRequest:
     msg_type: str = "vote_request"
 
 
-
-
 @dataclass
 class VoteResponse:
     sender: str

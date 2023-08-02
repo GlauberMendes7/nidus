@@ -86,7 +86,7 @@ class RaftNode(Actor):
         self.client_callbacks = {}
         self.leader_id = None
         self.restart_election_timer()
-        self.life_time = random.randint(50, 100)
+        self.life_time = random.randint(50, 65)
         self.phase = None
 
     def handle_client_request(self, req):
@@ -125,7 +125,6 @@ class RaftNode(Actor):
         self.changing_phases()
 
     def handle_append_entries_request(self, req):
-        # Estou omitindo a necessidade de nova eleiçao em caso de alteraçao energetica
         self.restart_election_timer()
 
         # if rpc request or response contains term t > currentterm:
@@ -193,7 +192,10 @@ class RaftNode(Actor):
         # If last log index ≥ nextIndex for a follower:
         # send AppendEntries RPC with log entries starting at nextIndex
         # if len(self.state.log) - 1 >= self.state.match_index[sender]:
+
         if self.state.match_index[sender] != len(self.state.log) - 1:
+            if self.life_time <50 and self.state.status == RaftState.LEADER:
+                print(f"Aqui o lider manda os terms {self.state.status}")
             append_entries_msg = AppendEntriesRequest.from_raft_state(
                 self.node_id, sender, self.state
             )
@@ -268,7 +270,11 @@ class RaftNode(Actor):
             self.promote()
 
     def handle_heartbeat_request(self, req):
-        for peer in self.peers:
+        """
+        Ajustar heartbeat request para enviar mensagens apenas para o PROXY
+        """
+            
+        for peer in self.peers:          
             append_entries_msg = AppendEntriesRequest.from_raft_state(
                 self.node_id, peer, self.state
             )
@@ -389,18 +395,18 @@ class RaftNode(Actor):
         pass
     
     def changing_phases(self):
-        life_time = int(self.life_time)
-        if life_time >= 75:
+        
+        if self.life_time >= 75:
             self.state.become_phase1()
             print("O nó esta em fase de criticidade energética 1")
-        if life_time >= 50 and life_time < 75:
+        if self.life_time >= 50 and self.life_time < 75:
             self.state.become_phase2()
             print("O nó esta em fase de criticidade energética 2")
-        if life_time > 20 and life_time < 50:
+        if self.life_time > 20 and self.life_time < 50:
             self.state.become_phase3()
             self.proxy_request()
             print("O nó esta em fase de criticidade energética 3")
-        if life_time <= 20:
+        if self.life_time <= 20:
             self.state.become_phase4()
             print("O nó esta em fase de criticidade energética 4")
 
