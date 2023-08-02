@@ -86,7 +86,7 @@ class RaftNode(Actor):
         self.client_callbacks = {}
         self.leader_id = None
         self.restart_election_timer()
-        self.life_time = str(random.randint(50, 100))
+        self.life_time = random.randint(50, 100)
         self.phase = None
 
     def handle_client_request(self, req):
@@ -120,8 +120,12 @@ class RaftNode(Actor):
         # add client addr to callbacks so we can notify it of the result once
         # it's been commited
         self.client_callbacks[match_index] = tuple(req.sender)
+        self.life_time = self.life_time -1 
+        print(f'{bcolors.WARNING} DECREASING LIFE_TIME. CURRENT: {self.life_time}{bcolors.ENDC}')
+        self.changing_phases()
 
     def handle_append_entries_request(self, req):
+        # Estou omitindo a necessidade de nova eleiçao em caso de alteraçao energetica
         self.restart_election_timer()
 
         # if rpc request or response contains term t > currentterm:
@@ -136,13 +140,13 @@ class RaftNode(Actor):
             self.leader_id = req.sender
 
         # Reply false if term < currentterm (§5.1)
-        if req.term < self.state.current_term:
+        if req.term < self.state.current_term :
             res = AppendEntriesResponse(
                 self.node_id, self.state.current_term, False, len(self.state.log) - 1, self.life_time
             )
             self.network.send(req.sender, res)
             return
-
+        
         entries = [LogEntry(e[0], e[1]) for e in req.entries]
         # Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
         # If an existing entry conflicts with a new one (same index but different terms), delete the existing entry and all that follow it (§5.3)
@@ -286,7 +290,8 @@ class RaftNode(Actor):
             )
             self.heartbeat_timer.start()
 
-    def handle_designate_proxy(self, req):
+    def handle_designate_proxy(self):
+        print(f"{bcolors.OKGREEN}AQUI RESPONDO A SOLICITACAO DO PROXY{bcolors.ENDC}")
         pass
 
     def handle_election_request(self, req):
@@ -378,7 +383,11 @@ class RaftNode(Actor):
 
     def log(self, msg):
         logger.info(msg, extra={"node_id": self.node_id})
-
+        
+    def proxy_request(self):
+        print(f"{bcolors.WARNING}SOLICITANDO PROXY{bcolors.ENDC}")
+        pass
+    
     def changing_phases(self):
         life_time = int(self.life_time)
         if life_time >= 75:
@@ -389,6 +398,7 @@ class RaftNode(Actor):
             print("O nó esta em fase de criticidade energética 2")
         if life_time > 20 and life_time < 50:
             self.state.become_phase3()
+            self.proxy_request()
             print("O nó esta em fase de criticidade energética 3")
         if life_time <= 20:
             self.state.become_phase4()
