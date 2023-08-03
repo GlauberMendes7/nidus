@@ -125,8 +125,9 @@ class RaftNode(Actor):
         self.changing_phases()
 
     def handle_append_entries_request(self, req):
+        # Cabe ao lider resetar a tolerancia de nova eleicao dos seguidores
+        # Para isso é utilizado o método abaixo
         self.restart_election_timer()
-
         # if rpc request or response contains term t > currentterm:
         # set currentterm = t, convert to follower (§5.1)
         if self.state.status != RaftState.FOLLOWER:
@@ -271,7 +272,12 @@ class RaftNode(Actor):
 
     def handle_heartbeat_request(self, req):
         """
-        Ajustar heartbeat request para enviar mensagens apenas para o PROXY
+        HEARTBEAT garante que:
+            A cada ciclo, os followers devem extender o mandato do lider.
+            Caso um seguidor não receba o heartbeat dentro da tolerancia
+            uma nova eleicao acontece.
+            Isso acontece porque ele manda uma entrada simples vazia para
+            para cada seguidor que por sua vez extende o prazo do lider.
         """
             
         for peer in self.peers:          
@@ -284,15 +290,17 @@ class RaftNode(Actor):
             self.network.send(peer, append_entries_msg)
 
         if self.state.phase == RaftState.PHASE1:
+            print("FAST HEARTBEAT")
             target = lambda addr: self.network.send(addr, HeartbeatRequest())
             self.heartbeat_timer = Timer(
                 self.heartbeat_interval, target, args=[self.node_id]
             )
             self.heartbeat_timer.start()
         else:
+            print("SLOW HEARTBEAT")
             target = lambda addr: self.network.send(addr, HeartbeatRequest(heartbeat_decrease=True))
             self.heartbeat_timer = Timer(
-                self.heartbeat_interval + 0.25, target, args=[self.node_id]
+                self.heartbeat_interval + 1, target, args=[self.node_id]
             )
             self.heartbeat_timer.start()
 
@@ -396,17 +404,17 @@ class RaftNode(Actor):
     
     def changing_phases(self):
         
-        if self.life_time >= 75:
+        if self.life_time >= 75 and self.state.phase != RaftState.PHASE1:
             self.state.become_phase1()
             print("O nó esta em fase de criticidade energética 1")
-        if self.life_time >= 50 and self.life_time < 75:
+        if self.life_time >= 50 and self.life_time < 75 and self.state.phase != RaftState.PHASE2:
             self.state.become_phase2()
             print("O nó esta em fase de criticidade energética 2")
-        if self.life_time > 20 and self.life_time < 50:
+        if self.life_time > 20 and self.life_time < 50 and self.state.phase != RaftState.PHASE3:
             self.state.become_phase3()
             self.proxy_request()
             print("O nó esta em fase de criticidade energética 3")
-        if self.life_time <= 20:
+        if self.life_time <= 20 and self.state.phase != RaftState.PHASE4:
             self.state.become_phase4()
             print("O nó esta em fase de criticidade energética 4")
 

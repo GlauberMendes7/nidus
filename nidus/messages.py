@@ -82,11 +82,18 @@ class HeartbeatRequest:
     empty: bool = False
     msg_type: str = "heartbeat_request"
     heartbeat_decrease: bool = False
+    
 
 @dataclass
-class DesignateProxy:
+class RequestProxy:
     sender: str
-    term: int
+    msg_type: str = "designate_proxy"
+
+@dataclass
+class ResponseProxy:
+    sender: str
+    node_id: str
+    life_time: int
     msg_type: str = "designate_proxy"
 
 
@@ -103,7 +110,8 @@ message_classes = [
     VoteRequest,
     VoteResponse,
     HeartbeatRequest,
-    DesignateProxy,
+    RequestProxy,
+    ResponseProxy,
     ElectionRequest,
 ]
 
