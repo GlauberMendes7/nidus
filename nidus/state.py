@@ -20,9 +20,10 @@ class RaftState:
     def __init__(self, storage_dir, node_id):
         self._storage_dir = storage_dir
         self._node_id = node_id
-
         self.status = self.FOLLOWER
-        self.phase = 0
+        
+        self.phase = None
+        
         self.life_time = 1
         self._current_term = 0
         self._voted_for = None
@@ -54,6 +55,7 @@ class RaftState:
         else:
             with open(vote_path, "wb+"):
                 pass
+        
 
     @property
     def current_term(self):

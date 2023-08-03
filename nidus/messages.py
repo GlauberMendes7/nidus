@@ -82,6 +82,11 @@ class HeartbeatRequest:
     empty: bool = False
     msg_type: str = "heartbeat_request"
     heartbeat_decrease: bool = False
+
+@dataclass
+class HeartbeatUpdate:
+    mode:bool = False
+    msg_type: str = "heartbeat_update"
     
 
 @dataclass
@@ -110,6 +115,7 @@ message_classes = [
     VoteRequest,
     VoteResponse,
     HeartbeatRequest,
+    HeartbeatUpdate,
     RequestProxy,
     ResponseProxy,
     ElectionRequest,
