@@ -10,7 +10,10 @@
             "request": "launch",
             "module": "nidus",
             "args": ["--config=config.json","node-0"],
-            "justMyCode": true,            
+            "justMyCode": true,
+            "env": {
+                "PYTHONDONTWRITEBYTECODE": "1"
+            }
         }
     ]
 }
