@@ -1,1 +1,2 @@
 nidus_logs/*
+**/__pycache__/
