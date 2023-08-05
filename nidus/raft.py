@@ -440,32 +440,54 @@ class RaftNode(Actor):
     def execute_behavior(self, current_behavior):    
         role = current_behavior[0]
         match role:
-            case RaftState.LEADER: 
+            case RaftState.LEADER:
+                if self.state.phase == RaftState.PHASE1:
+                    # Em operação normal
+                    pass
                 if self.state.phase == RaftState.PHASE2:    
-                    #Reduzindo Heartbeats e Avisando Followers                
+                    # Reduzindo Heartbeats e Avisando Followers                
                     self.advice_peers(self.state.phase)
-                
                 if self.state.phase == RaftState.PHASE3:
-                    ### eleger proxy
+                    ### Eleger proxy e passar a comunicar apenas com o proxy
                     self.request_proxy() 
-      
                     print("Convocando um proxy")
-                                     
-                    
                 if self.state.phase == RaftState.PHASE4:
+                    # Vai retornar para o estado de seguidor e se desligar.
                     print("desligando")
         
-                        
-                        
-            case RaftState.PROXY: 
+                                   
+            case RaftState.PROXY:
                 print ("Aqui vai a logica de proxy")
-                if self.state.phase == RaftState.PHASE3:
+                if self.state.phase == RaftState.PHASE1:
+                    # Em operação normal
                     pass
-
-            case RaftState.FOLLOWER: 
+                if self.state.phase == RaftState.PHASE2:
+                    # Em operação normal
+                    pass
                 if self.state.phase == RaftState.PHASE3:
-                    print("suspension mode")
+                    # Em operação normal
+                    pass
+                if self.state.phase == RaftState.PHASE4:
+                    # Avisar ao líder do seu desligamento (o líder deve designar um novo proxy), retornar para papel de seguidor e se desligar
+                    print("desligando")
+                    
+
+            case RaftState.FOLLOWER:
                 print ("Aqui vai a logica de seguidor")
+                if self.state.phase == RaftState.PHASE1:
+                    # Em operação normal
+                    pass
+                if self.state.phase == RaftState.PHASE2:
+                    # Em operação normal
+                    pass
+                if self.state.phase == RaftState.PHASE3:
+                    # Em modo de suspensão (líder ou proxy não envia heartbeat e appendEntries para seguidor suspenso, 
+                    # Apenas quando a quantidade de nós ativos não é suficiente para obter consenso (PODE DEIXAR POR ÚLTIMO)
+                    print("suspension mode")
+                if self.state.phase == RaftState.PHASE4:
+                    # Avisar ao líder do seu desligamento e se desligar
+                    print("desligando")
+                
             case _ : print("Não identificado")
           
           
