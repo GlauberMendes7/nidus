@@ -14,12 +14,14 @@ from nidus.messages import (
     HeartbeatUpdate,
     VoteRequest,
     VoteResponse,
+    ProxyRequest,
+    ProxyResponse,
 )
 from nidus.state import RaftState
 
 logger = logging.getLogger("node_logger")
 
-SLOWHEARTBEAT = 0.07
+SLOWHEARTBEAT = 0.02
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -77,8 +79,10 @@ class RaftNode(Actor):
     def __init__(self, node_id, peers, network, state_machine):
         self.node_id = node_id
         self.peers = peers
+        self.proxy = None
         self.network = network
         self.state = RaftState(self.network.config["storage_dir"], node_id)
+        self.state.add_subscriber(self)
         self.state_machine = state_machine
         self.heartbeat_interval = network.config["heartbeat_interval"]
         self.heartbeat_timer = None
@@ -87,9 +91,9 @@ class RaftNode(Actor):
         # waiting to be commited
         self.client_callbacks = {}
         self.leader_id = None
+        self.current_behavior = self.update_behavior()
         self.restart_election_timer()
-        self.life_time = random.randint(50, 65)
-        self.phase = None
+        
 
     def handle_client_request(self, req):
         """
@@ -122,9 +126,9 @@ class RaftNode(Actor):
         # add client addr to callbacks so we can notify it of the result once
         # it's been commited
         self.client_callbacks[match_index] = tuple(req.sender)
-        self.life_time = self.life_time -1 
-        print(f'{bcolors.WARNING} DECREASING LIFE_TIME. CURRENT: {self.life_time}{bcolors.ENDC}')
-        self.changing_phases()
+        self.state.life_time = self.state.life_time - 1 
+        print(f'{bcolors.WARNING} DECREASING LIFE_TIME. CURRENT: {self.state.life_time}{bcolors.ENDC}')
+        # self.phase_behavior()
 
     def handle_append_entries_request(self, req):
         # Cabe ao lider resetar a tolerancia de nova eleicao dos seguidores
@@ -144,7 +148,7 @@ class RaftNode(Actor):
         # Reply false if term < currentterm (§5.1)
         if req.term < self.state.current_term :
             res = AppendEntriesResponse(
-                self.node_id, self.state.current_term, False, len(self.state.log) - 1, self.life_time
+                self.node_id, self.state.current_term, False, len(self.state.log) - 1, self.state.life_time
             )
             self.network.send(req.sender, res)
             return
@@ -167,7 +171,7 @@ class RaftNode(Actor):
             match_index = 0
 
         res = AppendEntriesResponse(
-            self.node_id, self.state.current_term, success, match_index, self.life_time
+            self.node_id, self.state.current_term, success, match_index, self.state.life_time
         )
         self.network.send(req.sender, res)
         self.apply_any_commits()
@@ -197,8 +201,6 @@ class RaftNode(Actor):
         # if len(self.state.log) - 1 >= self.state.match_index[sender]:
 
         if self.state.match_index[sender] != len(self.state.log) - 1:
-            if self.life_time <50 and self.state.status == RaftState.LEADER:
-                print(f"Aqui o lider manda os terms {self.state.status}")
             append_entries_msg = AppendEntriesRequest.from_raft_state(
                 self.node_id, sender, self.state
             )
@@ -225,13 +227,13 @@ class RaftNode(Actor):
     def handle_vote_request(self, req):
         self.restart_election_timer()
         
-        if req.life_time <= self.life_time:
-            vote_msg = VoteResponse(self.node_id, self.state.current_term, False, self.life_time)
-            self.log(f"vote request from {req.candidate}:{req.life_time} granted=False (candidate life_time lower than my self: {self.life_time})" )
+        if req.life_time <= self.state.life_time:
+            vote_msg = VoteResponse(self.node_id, self.state.current_term, False, self.state.life_time)
+            self.log(f"vote request from {req.candidate}:{req.life_time} granted=False (candidate life_time lower than my self: {self.state.life_time})" )
             self.network.send(req.candidate, vote_msg)
             return
 
-        if (req.life_time > self.life_time and self.state.status != RaftState.FOLLOWER):
+        if (req.life_time > self.state.life_time and self.state.status != RaftState.FOLLOWER):
             self.state.current_term = req.term
             self.demote()
 
@@ -240,8 +242,8 @@ class RaftNode(Actor):
         # votedFor is null or candidateId, and candidate’s log is atleast as up-to-date
         # as receiver’s log, grant vote (§5.2, §5.4)
         if (self.state.voted_for is None  or self.state.voted_for == req.candidate
-                and (req.life_time > self.life_time)):
-            vote_msg = VoteResponse(self.node_id, self.state.current_term, True, self.life_time)
+                and (req.life_time > self.state.life_time)):
+            vote_msg = VoteResponse(self.node_id, self.state.current_term, True, self.state.life_time)
             self.state.voted_for = req.candidate
             self.log(f"vote request from {req.candidate} granted=True")
             self.network.send(req.candidate, vote_msg)
@@ -249,14 +251,14 @@ class RaftNode(Actor):
 
         # is this ok to default to?
         self.log(
-            f"vote request from {req.candidate} granted=False (vote already granted or life_time lower than self {self.life_time})"
+            f"vote request from {req.candidate} granted=False (vote already granted or life_time lower than self {self.state.life_time})"
         )
-        vote_msg = VoteResponse(self.node_id, self.state.current_term, False, self.life_time)
+        vote_msg = VoteResponse(self.node_id, self.state.current_term, False, self.state.life_time)
         self.network.send(req.candidate, vote_msg)
 
     def handle_vote_response(self, res):
         print(f"Vou ser lider {res}")
-        if res.life_time > self.life_time:
+        if res.life_time > self.state.life_time:
             self.demote()
 
         if self.state.status != RaftState.CANDIDATE:
@@ -268,7 +270,7 @@ class RaftNode(Actor):
 
         if len(self.state.votes) > (len(self.peers) + 1) // 2:
             self.log(
-                f"{bcolors.OKCYAN} majority of votes granted {self.state.votes}, transitoning to leader with {self.life_time} autonomy{bcolors.ENDC}"
+                f"{bcolors.OKCYAN} majority of votes granted {self.state.votes}, transitoning to leader with {self.state.life_time} autonomy{bcolors.ENDC}"
             )
             self.promote()
 
@@ -281,8 +283,13 @@ class RaftNode(Actor):
             Isso acontece porque ele manda uma entrada simples vazia para
             para cada seguidor que por sua vez extende o prazo do lider.
         """
-            
-        for peer in self.peers:          
+        if self.proxy:
+            print("enviando apenas para proxy")
+            dest = [self.proxy]
+        else: 
+            dest = self.peers   
+                       
+        for peer in dest:          
             append_entries_msg = AppendEntriesRequest.from_raft_state(
                 self.node_id, peer, self.state
             )
@@ -290,16 +297,14 @@ class RaftNode(Actor):
             if req.empty:
                 append_entries_msg.entries = []
             self.network.send(peer, append_entries_msg)
-
+        
         if self.state.phase == RaftState.PHASE1:
-            # print("FAST HEARTBEAT")
             target = lambda addr: self.network.send(addr, HeartbeatRequest())
             self.heartbeat_timer = Timer(
                 self.heartbeat_interval, target, args=[self.node_id]
             )
             self.heartbeat_timer.start()
         else:
-            # print("SLOW HEARTBEAT")
             target = lambda addr: self.network.send(addr, HeartbeatRequest(heartbeat_decrease=True))
             self.heartbeat_timer = Timer(
                 self.heartbeat_interval + 1, target, args=[self.node_id]
@@ -315,21 +320,15 @@ class RaftNode(Actor):
         print(f"{bcolors.WARNING}Atualizei minha tolerancia para {self.heartbeat_interval}{bcolors.ENDC}")
             
     def advice_peers(self, phase: RaftState):
-        
         for peer in self.peers:
             print(f"mandando advice para o peer {peer}")
             self.network.send(peer, HeartbeatUpdate(phase==RaftState.PHASE2))
 
-    def handle_designate_proxy(self):
-        print(f"{bcolors.OKGREEN}AQUI RESPONDO A SOLICITACAO DO PROXY{bcolors.ENDC}")
-        pass
-
     def handle_election_request(self, req):
-        # self.changing_phases()
+        # self.phase_behavior()
         self.log(
-            f"haven't heard from leader or election failed; beginning election. Lifetime is: {self.life_time} and current phase is: {self.state.phase}")
-        self.state.become_candidate(self.node_id, self.life_time)
-
+            f"haven't heard from leader or election failed; beginning election. Lifetime is: {self.state.life_time} and current phase is: {self.state.phase}")
+        self.state.become_candidate(self.node_id, self.state.life_time)
         prev_index = len(self.state.log) - 1
         if prev_index >= 0:
             prev_term = self.state.log[prev_index].term
@@ -340,7 +339,7 @@ class RaftNode(Actor):
         for peer in self.peers:
             # Passando capacidade enérgética no Request de votos
             vote_msg = VoteRequest(
-                self.state.current_term, self.node_id, prev_index, prev_term, self.life_time
+                self.state.current_term, self.node_id, prev_index, prev_term, self.state.life_time
             )
             self.network.send(peer, vote_msg)
 
@@ -379,14 +378,11 @@ class RaftNode(Actor):
 
     def promote(self):
         self.state.become_leader(self.peers + [self.node_id])
-        self.changing_phases()
         heartbeat_request = HeartbeatRequest(empty=True)
         self.election_timer.cancel()
         # should we skip the send to ourself and just invoke?
         self.network.send(self.node_id, heartbeat_request)
-        # if self.state.phase == RaftState.PHASE3 or self.state.phase == RaftState.PHASE4:
-        #     print("nó em fase de criticidade 3 ou mais, revertendo para follower")
-        #     self.state.become_follower()
+
 
     def demote(self):
         self.log("reverting to follower")
@@ -394,6 +390,25 @@ class RaftNode(Actor):
             self.heartbeat_timer.cancel()
         self.state.become_follower()
         self.restart_election_timer()
+        self.proxy = None
+        
+    
+    def handle_proxy_response(self, res):
+        print(f"{bcolors.OKGREEN}AQUI analiso os candidatos a proxy {res.node_id}:{res.life_time}{bcolors.ENDC}")
+        pass
+    
+    
+    def handle_proxy_request(self, req):
+        self.network.send(req.sender, ProxyResponse(self.node_id, self.state.life_time))
+        print(f"{bcolors.OKGREEN}AQUI RESPONDO A SOLICITACAO DO PROXY por {req.sender}{bcolors.ENDC}")
+        
+        
+    def request_proxy(self):
+        for peer in self.peers:
+            print("Request")
+            self.network.send(peer, ProxyRequest(self.node_id))
+        self.proxy = None
+        pass       
 
     def restart_election_timer(self):
         if self.election_timer is not None:
@@ -415,28 +430,47 @@ class RaftNode(Actor):
     def log(self, msg):
         logger.info(msg, extra={"node_id": self.node_id})
         
-    def proxy_request(self):
-        print(f"{bcolors.WARNING}SOLICITANDO PROXY{bcolors.ENDC}")
-        pass
     
-    def changing_phases(self):
+    def update_behavior(self):                 
+        current_behavior = (self.state.status, self.state.phase)
+        print(f'Name: {self.node_id} BEHAVIOR: {current_behavior}')
+        self.execute_behavior(current_behavior)
+        return current_behavior
+    
+    def execute_behavior(self, current_behavior):    
+        role = current_behavior[0]
+        match role:
+            case RaftState.LEADER: 
+                if self.state.phase == RaftState.PHASE2:    
+                    #Reduzindo Heartbeats e Avisando Followers                
+                    self.advice_peers(self.state.phase)
+                
+                if self.state.phase == RaftState.PHASE3:
+                    ### eleger proxy
+                    self.request_proxy() 
+      
+                    print("Convocando um proxy")
+                                     
+                    
+                if self.state.phase == RaftState.PHASE4:
+                    print("desligando")
         
-        if self.life_time >= 75 and self.state.phase != RaftState.PHASE1:
-            self.state.become_phase1()
-            print("O nó esta em fase de criticidade energética 1")
-        if (self.life_time >= 50 and self.life_time < 75) and self.state.phase != RaftState.PHASE2:
-            self.state.become_phase2()
-            if self.state.status == RaftState.LEADER:
-                self.advice_peers(self.state.phase)
-            print("O nó esta em fase de criticidade energética 2")
-        if self.life_time > 20 and self.life_time < 50 and self.state.phase != RaftState.PHASE3:
-            self.state.become_phase3()
-            if self.state.status == RaftState.LEADER:
-                self.proxy_request()
-            print("O nó esta em fase de criticidade energética 3")
-        if self.life_time <= 20 and self.state.phase != RaftState.PHASE4:
-            self.state.become_phase4()
-            print("O nó esta em fase de criticidade energética 4")
+                        
+                        
+            case RaftState.PROXY: 
+                print ("Aqui vai a logica de proxy")
+                if self.state.phase == RaftState.PHASE3:
+                    pass
+
+            case RaftState.FOLLOWER: 
+                if self.state.phase == RaftState.PHASE3:
+                    print("suspension mode")
+                print ("Aqui vai a logica de seguidor")
+            case _ : print("Não identificado")
+          
+          
+        
+       
 
     def __repr__(self):
         return f"""\

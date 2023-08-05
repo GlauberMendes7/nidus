@@ -90,16 +90,15 @@ class HeartbeatUpdate:
     
 
 @dataclass
-class RequestProxy:
+class ProxyRequest:
     sender: str
-    msg_type: str = "designate_proxy"
+    msg_type: str = "proxy_request"
 
 @dataclass
-class ResponseProxy:
-    sender: str
+class ProxyResponse:
     node_id: str
     life_time: int
-    msg_type: str = "designate_proxy"
+    msg_type: str = "proxy_response"
 
 
 @dataclass
@@ -116,8 +115,8 @@ message_classes = [
     VoteResponse,
     HeartbeatRequest,
     HeartbeatUpdate,
-    RequestProxy,
-    ResponseProxy,
+    ProxyRequest,
+    ProxyResponse,
     ElectionRequest,
 ]
 
