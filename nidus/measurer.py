@@ -1,6 +1,6 @@
 import psutil
 import os
-from pyJoules.energy_meter import EnergyContext, EnergyHandler
+from pyJoules.energy_meter import EnergyContext, EnergyHandler, EnergyMeter
 
 
 def foo(iterations=1000000):
@@ -12,25 +12,43 @@ def foo(iterations=1000000):
 
 
 class Measure:
-    def __init__(self):
+
+    def __init__(self, energy_context: EnergyContext = EnergyContext(handler=EnergyHandler())):
+        self.energy_context: EnergyContext = energy_context
+        self.energy_meter: EnergyMeter = None
+
+    def __enter__(self):
+        try:
+            self.energy_meter = self.energy_context.__enter__()
+        except: 
+            pass
+
         self.take_snapshot()
 
-    def __take_snapshot_energy(self) -> dict:
-        snapshot = dict()
+        return self
 
+    def __exit__(self, exc_type, exc_value, exc_tb):
         try:
-            with EnergyContext(handler=EnergyHandler()) as energy:
-                device_index = 0
-                for device in energy.devices:
-                    keys = device.get_configured_domains()
-                    values = device.get_energy()
-
-                    for i in range(len(keys)):
-                        key_str = f"dev{device_index}_{str(keys[i])}"
-                        snapshot[key_str] = values[i]
-        except:
+            self.energy_context.__exit__(exc_type, exc_value, exc_tb)
+            self.energy_meter = None
+        except: 
             pass
+
+            
+    def __take_snapshot_energy(self) -> dict:
+        if self.energy_meter is None:
+            return {}
         
+        snapshot = dict()
+        index = 0
+        for device in self.energy_meter.devices:
+            keys = device.get_configured_domains()
+            values = device.get_energy()
+
+            for i in range(len(keys)):
+                key_str = f"dev{index}_{str(keys[i])}"
+                snapshot[key_str] = values[i]
+
         return snapshot
 
     def __take_snapshot_ps(self) -> dict:
@@ -62,11 +80,10 @@ class Measure:
 
 
 def main():
-    measure = Measure()
-
-    for i in range(10):
-        foo()
-        print(measure.take_snapshot_delta())
+    with Measure() as measure:
+        for i in range(10):
+            foo()
+            print(measure.take_snapshot_delta())
 
 
 if __name__ == "__main__":
