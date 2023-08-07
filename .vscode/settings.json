@@ -1,6 +1,7 @@
 {
     "cSpell.words": [
         "getpid",
+        "kvstore",
         "measureit",
         "psutil",
         "RAPL"

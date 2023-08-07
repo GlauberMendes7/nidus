@@ -11,6 +11,7 @@ class Trace:
         self.enabled = True
         self.filters = set([filter for filter in filter_args if isinstance(
             filter, str) and len(filter) > 0])
+        self.logger: logging.Logger = None
 
     def __enter__(self):
         self.create()
@@ -20,9 +21,9 @@ class Trace:
         self.destroy()
         return self
 
-    def accept(self, filename: str):
-        if filename.endswith("tracer.py"):
-            return False        
+    def accept(self, filename: str, function: str):
+        if filename.endswith("tracer.py") or function.startswith("__"):
+            return False
 
         if len(self.filters) == 0:
             return True
@@ -38,37 +39,39 @@ class Trace:
         line = frame.f_lineno
         function = frame.f_code.co_name
         arguments = frame.f_locals
+        
 
-        if not self.enabled or not self.accept(filename):
-            return self.trace
-
-        self.logger.info("%s %s @ %s - %s (%s)" %
-                         (event, filename, line, function, str(arguments).replace('\n', '')))
+        if self.enabled and self.accept(filename, function):
+            arguments = str(arguments).replace('\n', '') if arguments else ""
+            # arguments = ""
+            self.logger.info("%s; %s; %d; %s; %s;" % (event, filename, line, function, arguments))
 
         return self.trace
-
 
     def is_debug():
         gettrace = getattr(sys, 'gettrace', None)
 
         if gettrace is None:
             return False
-        
+
         v = gettrace()
 
         if v is None:
             return False
-        
+
         return True
 
     def setup_log(self):
-        self.logger = logging.getLogger('trace')
-        self.logger.setLevel(logging.DEBUG)
-        fh = logging.FileHandler(f'{time.strftime("%Y%m%d-%H%M%S")}_trace.log')
+        fh = logging.FileHandler(f'{time.strftime("%Y%m%d-%H%M%S")}_{os.getpid()}_trace.log')
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(logging.Formatter('%(asctime)s,%(msecs)d %(message)s'))
+
+        self.logger = logging.getLogger('trace')
+        self.logger.setLevel(logging.DEBUG)
         self.logger.addHandler(fh)
         self.logger.propagate = False
+        self.logger.info("event; filename; line; function; arguments;")
+
 
     def create(self):
         self.enabled = not Trace.is_debug() and int(os.getenv("TRACER_ENABLED", 1)) == 1
