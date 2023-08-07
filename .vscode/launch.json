@@ -5,7 +5,20 @@
     "version": "0.2.0",
     "configurations": [        
         {
-            "name": "nidus",
+            "name": "current",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "node-0",
             "type": "python",
             "request": "launch",
             "module": "nidus",

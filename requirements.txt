@@ -1,0 +1,2 @@
+pyjoules==0.5.1
+psutil==5.9.5
