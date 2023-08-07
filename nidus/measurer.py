@@ -16,11 +16,12 @@ class Measure:
     def __init__(self, energy_context: EnergyContext = EnergyContext(handler=EnergyHandler())):
         self.energy_context: EnergyContext = energy_context
         self.energy_meter: EnergyMeter = None
+        self.snapshot = dict()
 
     def __enter__(self):
         try:
             self.energy_meter = self.energy_context.__enter__()
-        except: 
+        except:
             pass
 
         self.take_snapshot()
@@ -31,14 +32,13 @@ class Measure:
         try:
             self.energy_context.__exit__(exc_type, exc_value, exc_tb)
             self.energy_meter = None
-        except: 
+        except:
             pass
 
-            
     def __take_snapshot_energy(self) -> dict:
         if self.energy_meter is None:
             return {}
-        
+
         snapshot = dict()
         index = 0
         for device in self.energy_meter.devices:
@@ -74,9 +74,9 @@ class Measure:
         return self.snapshot
 
     def take_snapshot_delta(self) -> dict:
-        snapshot_last = self.get_snapshot()
+        snapshot0 = self.get_snapshot()
         snapshot = self.take_snapshot()
-        return {key: snapshot[key] - snapshot_last[key] for key in snapshot_last}
+        return {key: snapshot[key] - snapshot0[key] for key in snapshot}
 
 
 def main():
