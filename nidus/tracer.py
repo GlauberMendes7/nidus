@@ -3,6 +3,7 @@ from types import FrameType
 from typing import Any
 import logging
 import time
+import os
 
 
 class Trace:
@@ -68,7 +69,7 @@ class Trace:
         self.logger.propagate = False
 
     def create(self):
-        if not Trace.is_debug():            
+        if not Trace.is_debug() and int(os.getenv("TRACER_ENABLED", 1)) == 1:            
             self.setup_log()
             sys.settrace(self.trace)
 

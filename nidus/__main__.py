@@ -1,13 +1,12 @@
 import argparse
 import queue
 
-from tracer import Trace
-
 from nidus.actors import Actor, get_system
 from nidus.config import load_user_config
 from nidus.kvstore import KVStore
 from nidus.messages import ClientRequest
 from nidus.raft import RaftNetwork
+from nidus.tracer import Trace
 
 response = queue.Queue()
 
@@ -55,7 +54,6 @@ def main():
 def main():
     with Trace("pyJoules", "nidus"):
         nodes = main()
-        print(nodes)
 
 
 if __name__ == "__main__":
