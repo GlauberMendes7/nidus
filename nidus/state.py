@@ -11,6 +11,7 @@ class RaftState:
     CANDIDATE = "CANDIDATE"
     FOLLOWER = "FOLLOWER"
     PROXY = "PROXY"
+    PROXYCANDIDATE = "PROXYCANDIDATE"
 
     PHASE1 = "PHASE 1"
     PHASE2 = "PHASE 2"
@@ -28,6 +29,7 @@ class RaftState:
         
         self._current_term = 0
         self._voted_for = None
+        self.proxy_candidates = dict()
         self.votes = set()
         self.log = Log(os.path.join(storage_dir, f"{node_id}.log"))
         self.commit_index = -1
@@ -153,6 +155,11 @@ class RaftState:
 
     def become_proxy(self):
         self.status = self.PROXY
+        self.notify_subscriber()
+        
+    def become_proxycandidate(self):
+        self.status = self.PROXYCANDIDATE
+        self.notify_subscriber()
 
     def become_phase1(self):
         self._phase = RaftState.PHASE1

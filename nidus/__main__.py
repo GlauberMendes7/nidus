@@ -54,39 +54,39 @@ def main():
         nodes = [net.create_node(n) for n in args.name]
         return nodes
 
-logger = logging.getLogger('trace')
-logger.setLevel(logging.DEBUG)
-fh = logging.FileHandler(f'nidus_logs/{time.strftime("%Y%m%d-%H%M%S")}_trace.log')
-fh.setLevel(logging.DEBUG)
-fh.setFormatter(logging.Formatter('%(asctime)s,%(msecs)d %(message)s'))
-logger.addHandler(fh)
+# logger = logging.getLogger('trace')
+# logger.setLevel(logging.DEBUG)
+# fh = logging.FileHandler(f'nidus_logs/{time.strftime("%Y%m%d-%H%M%S")}_trace.log')
+# fh.setLevel(logging.DEBUG)
+# fh.setFormatter(logging.Formatter('%(asctime)s,%(msecs)d %(message)s'))
+# logger.addHandler(fh)
 
 
-# https://stackoverflow.com/questions/5103735/better-way-to-log-method-calls-in-python
-def trace(frame: FrameType, event: str, arg: Any):
+# # https://stackoverflow.com/questions/5103735/better-way-to-log-method-calls-in-python
+# def trace(frame: FrameType, event: str, arg: Any):
     
-    if event != "call":
-        return None
+#     if event != "call":
+#         return None
     
-    filename = frame.f_code.co_filename
-    funcname = frame.f_code.co_name
+#     filename = frame.f_code.co_filename
+#     funcname = frame.f_code.co_name
     
-    if "/nidus/" not in filename or re.match("((__\\w+__)|(\\<\\w+\\>))", funcname):
-        return None
+#     if "/nidus/" not in filename or re.match("((__\\w+__)|(\\<\\w+\\>))", funcname):
+#         return None
     
-    locals = frame.f_locals
-    line = frame.f_lineno
+#     locals = frame.f_locals
+#     line = frame.f_lineno
 
-    logger.info("%s @ %s - %s (%s)" % (filename, line, funcname, str(locals).replace('\n', '')))
+#     logger.info("%s @ %s - %s (%s)" % (filename, line, funcname, str(locals).replace('\n', '')))
     
-    return trace
+#     return trace
 
 
-# if not __debug__:
+# # if not __debug__:
     
-sys.settrace(trace)
+# sys.settrace(trace)
 
 nodes = main()
 
-sys.settrace(None)
+# sys.settrace(None)
 

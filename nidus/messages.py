@@ -65,6 +65,8 @@ class VoteRequest:
     last_log_term: int
     life_time : int
     msg_type: str = "vote_request"
+    
+
 
 
 @dataclass
@@ -90,20 +92,32 @@ class HeartbeatUpdate:
     
 
 @dataclass
+class ElectionRequest:
+    msg_type: str = "election_request"
+    
+
+@dataclass
 class ProxyRequest:
-    sender: str
+    candidate: str
+    life_time: int
     msg_type: str = "proxy_request"
 
 @dataclass
 class ProxyResponse:
-    node_id: str
+    sender: str
+    candidate: str
     life_time: int
     msg_type: str = "proxy_response"
 
-
 @dataclass
-class ElectionRequest:
-    msg_type: str = "election_request"
+class ProxyElectionResponse:
+    candidate: str
+    msg_type: str = "proxy_election_response"
+    
+@dataclass
+class ProxyElectionRequest:
+    sender: str
+    msg_type: str = "proxy_election_request"
 
 
 message_classes = [
@@ -115,9 +129,12 @@ message_classes = [
     VoteResponse,
     HeartbeatRequest,
     HeartbeatUpdate,
+    ElectionRequest,
     ProxyRequest,
     ProxyResponse,
-    ElectionRequest,
+    
+    ProxyElectionRequest,
+    ProxyElectionResponse,
 ]
 
 
