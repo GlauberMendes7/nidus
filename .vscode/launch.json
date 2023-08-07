@@ -11,7 +11,7 @@
             "cwd": "${workspaceFolder}",
             "env": {
                 "PYTHONDONTWRITEBYTECODE": "1",
-                "PYTHONPATH": "${workspaceFolder}/nidus"
+                "PYTHONPATH": "${workspaceFolder}"
             },
             "program": "${file}",
             "console": "integratedTerminal",
@@ -26,7 +26,7 @@
             "justMyCode": true,
             "env": {
                 "PYTHONDONTWRITEBYTECODE": "1",
-                "PYTHONPATH": "${workspaceFolder}/nidus"
+                "PYTHONPATH": "${workspaceFolder}"
             }
         }
     ]

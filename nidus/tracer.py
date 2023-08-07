@@ -20,7 +20,9 @@ class Trace:
         self.destroy()
         return self
 
-    def accept(self, filename):
+    def accept(self, filename: str):
+        if filename.endswith("tracer.py"):
+            return False        
 
         if len(self.filters) == 0:
             return True
@@ -69,7 +71,8 @@ class Trace:
         self.logger.propagate = False
 
     def create(self):
-        if not Trace.is_debug() and int(os.getenv("TRACER_ENABLED", 1)) == 1:            
+        self.enabled = not Trace.is_debug() and int(os.getenv("TRACER_ENABLED", 1)) == 1
+        if self.enabled:
             self.setup_log()
             sys.settrace(self.trace)
 
