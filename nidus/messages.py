@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Union
+from typing import List, Union, Dict
 
 
 @dataclass
@@ -117,6 +117,7 @@ class ProxyElectionResponse:
 @dataclass
 class ProxyElectionRequest:
     sender: str
+    state: Dict[str, int]
     msg_type: str = "proxy_election_request"
 
 
