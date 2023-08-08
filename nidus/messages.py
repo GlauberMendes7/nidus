@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import List, Union, Dict
 
+from nidus.state import RaftState
+
 
 @dataclass
 class ClientRequest:
@@ -117,7 +119,7 @@ class ProxyElectionResponse:
 @dataclass
 class ProxyElectionRequest:
     sender: str
-    state: Dict[str, int]
+    state: list
     msg_type: str = "proxy_election_request"
 
 

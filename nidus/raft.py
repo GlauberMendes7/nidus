@@ -1,10 +1,11 @@
 import logging
 import os
 import random
+import copy
 from threading import Timer
 
 from nidus.actors import Actor, get_system
-from nidus.log import LogEntry
+from nidus.log import LogEntry, clear_upto
 from nidus.messages import (
     AppendEntriesRequest,
     AppendEntriesResponse,
@@ -136,7 +137,7 @@ class RaftNode(Actor):
 
     def handle_append_entries_request(self, req):
         self.restart_election_timer()
-        print(req.sender)
+        # print(req.sender)
         if self.state.status == RaftState.LEADER:
             return 
         
@@ -178,8 +179,10 @@ class RaftNode(Actor):
         self.apply_any_commits()
 
     def handle_append_entries_response(self, res):
-        if self.state.status != RaftState.LEADER:
+        if self.state.status == RaftState.FOLLOWER:
             return
+        
+        
         sender = res.sender
         if res.success:
             self.state.match_index[sender] = max(
@@ -331,6 +334,9 @@ class RaftNode(Actor):
         be on a majority of the servers logs.
         """
         sorted_matched_idx = sorted(self.state.match_index.values())
+        if self.proxy_id:
+            sorted_matched_idx = sorted_matched_idx[-2:]
+        
         commited_idx = sorted_matched_idx[(len(sorted_matched_idx) - 1) // 2]
         return commited_idx >= indx
     
@@ -338,6 +344,7 @@ class RaftNode(Actor):
     def apply_any_commits(self):
         # If commitIndex > lastApplied: increment lastApplied,
         # applylog[lastApplied] to state machine (§5.3)
+        
         while self.state.commit_index > self.state.last_applied:
             log_entry = self.state.log[self.state.last_applied + 1]
             try:
@@ -348,6 +355,8 @@ class RaftNode(Actor):
             self.log(f"applied {log_entry.item} to state machine: {result}")
 
             # notify the client of the result
+            if self.state.status != RaftState.LEADER:
+                return
             if (
                     self.state.status == RaftState.LEADER
                     and self.client_callbacks.get(self.state.last_applied) is not None
@@ -380,8 +389,14 @@ class RaftNode(Actor):
             
     def handle_proxy_election_request(self, req):
         self.state.become_proxy()
-        self.state.next_index = {key: value for key, value in req.state.items()}
-        self.current_term
+  
+        self.state.match_index = dict(req.state[0])
+        self.state.next_index = dict(req.state[1])
+        self.state.current_term = req.state[2]
+        self.state.commit_index = req.state[3] 
+        self.state.last_applied = req.state[4]
+        
+        
         heartbeat_request = HeartbeatRequest(empty=True)
         self.election_timer.cancel()
         # should we skip the send to ourself and just invoke?
@@ -398,7 +413,11 @@ class RaftNode(Actor):
         candidate = max(self.state.proxy_candidates, 
                         key=self.state.proxy_candidates.get)
         self.proxy_id = candidate
-        self.network.send(candidate, ProxyElectionRequest(self.node_id, self.state.next_index))
+        self.heartbeat_timer.cancel()
+        heartbeat_request = HeartbeatRequest(empty=True)
+        self.network.send(self.node_id, heartbeat_request)
+        # self.state.copy_state_proxy()
+        self.network.send(candidate, ProxyElectionRequest(self.node_id, self.state.copy_state_proxy()))
               
 
     def restart_election_timer(self):

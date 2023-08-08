@@ -1,6 +1,8 @@
 import os
 import struct
 import random
+import copy
+import pickle 
 
 from nidus.log import Log, append_entries
 
@@ -183,3 +185,14 @@ class RaftState:
    
     def append_entries(self, prev_index, prev_term, entries):
         return append_entries(self.log, prev_index, prev_term, entries)
+
+    def copy_state_proxy(self):
+
+        return [self.match_index , self.next_index, self.current_term, 
+                self.commit_index, self.last_applied]
+
+ 
+ 
+    
+
+         
