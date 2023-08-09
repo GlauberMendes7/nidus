@@ -3,6 +3,8 @@
         "getpid",
         "kvstore",
         "measureit",
+        "proxycandidate",
+        "PROXYCANDIDATE",
         "psutil",
         "RAPL"
     ]

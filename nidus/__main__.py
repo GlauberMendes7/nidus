@@ -52,5 +52,5 @@ def main():
 
 
 if __name__ == "__main__":
-    with Trace("nidus"):
-        main()
+    # with Trace("nidus"):
+    main()
