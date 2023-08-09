@@ -23,6 +23,9 @@ from nidus.messages import (
 )
 from nidus.state import RaftState
 
+from nidus.measurer import Measure
+from nidus.bucket import Bucket
+
 logger = logging.getLogger("node_logger")
 
 SLOWHEARTBEAT = 0.02
@@ -63,7 +66,6 @@ class RaftNetwork:
         return self.actor_system._actors[addr]
 
     def send(self, node_id, msg):
-        self.instancia_changing_phases(self)
         # node_id is key to a host,port raft node
         if node_id in self.config["cluster"]:
             self.actor_system.send(self.config["cluster"][node_id], msg)
@@ -71,21 +73,26 @@ class RaftNetwork:
             self.actor_system.send(node_id, msg)
         return
 
-    def instancia_changing_phases(self, self1):
-        pass
-
 
 class RaftNode(Actor):
     """
     All the message handling and state changing logic is here
     """
 
-    def __init__(self, node_id, peers, network, state_machine):
+    def __init__(self, node_id, peers, network, state_machine):       
+        
+        self.field = network.config["metric"]
+        self.capacity = network.config["capacity"]
+        self.initial = random.randint(network.config["initial"][0], network.config["initial"][1]) 
+        self.rate = network.config["rate"]
+        self.threshold = tuple(network.config["threshold"])
+        self.bucket = Bucket(self.capacity, self.rate, self.initial)
+
         self.node_id = node_id
         self.peers = peers
         self.proxy_id = None
         self.network = network
-        self.state = RaftState(self.network.config["storage_dir"], node_id)
+        self.state = RaftState(self.network.config["storage_dir"], node_id, initial, threshold)
         self.state.add_subscriber(self)
         self.state_machine = state_machine
         self.heartbeat_interval = network.config["heartbeat_interval"]
@@ -99,7 +106,6 @@ class RaftNode(Actor):
         self.current_behavior = self.update_behavior()
         self.restart_election_timer()
         
-
     def handle_client_request(self, req):
         """
         Handle ClientRequest messages to run a command. Append the command to
@@ -131,9 +137,28 @@ class RaftNode(Actor):
         # add client addr to callbacks so we can notify it of the result once
         # it's been commited
         self.client_callbacks[match_index] = tuple(req.sender)
-        self.state.life_time = self.state.life_time - 1 
+        self.state.life_time = self.get_lifetime()
         print(f'{bcolors.WARNING} DECREASING LIFE_TIME. CURRENT: {self.state.life_time}{bcolors.ENDC}')
         # self.phase_behavior()
+
+
+
+    def get_lifetime(self) -> float:
+        value = self.measure()
+        self.bucket.consume(value)
+        return self.capacity - self.bucket.value
+
+    def measure(self) -> float:
+        with Measure() as measure:
+            delta = measure.take_snapshot_delta()
+            if self.field not in delta:
+                raise ValueError("Field not found (%s)" % self.field)
+            
+            value = delta[self.field]
+
+        # print(value)
+        
+        return value
 
     def handle_append_entries_request(self, req):
         self.restart_election_timer()

@@ -7,5 +7,11 @@
 		"node-4": ["localhost", 16000]
 	},
 	"heartbeat_interval": 0.03,
-	"storage_dir": "nidus_logs"
+	"storage_dir": "nidus_logs",
+	"metric": "dev0_package_0",
+	"capacity": 9999999.9,
+	"initial": [ 4444444.4, 6666666.6 ],
+	"rate": 555555.5,
+	"threshold": [ 6666666.6, 3333333.3, 1111111.1 ]
 }
+

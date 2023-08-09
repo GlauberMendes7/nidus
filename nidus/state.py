@@ -5,7 +5,7 @@ import copy
 import pickle 
 
 from nidus.log import Log, append_entries
-
+from typing import Tuple
 
 class RaftState:
     # status states
@@ -20,13 +20,14 @@ class RaftState:
     PHASE3 = "PHASE 3"
     PHASE4 = "PHASE 4"
 
-    def __init__(self, storage_dir, node_id, life_time: int = random.randint(50, 59)):
+    def __init__(self, storage_dir, node_id, life_time: int, threshold: Tuple[int, int, int]):
         self._storage_dir = storage_dir
         self._node_id = node_id
         
         self.subscriber = None
         self.status = self.FOLLOWER                
-        self._life_time = 51 if node_id == "node-0" else 50
+        self._life_time = life_time
+        self._threshold = threshold
         self._phase = None
         
         self._current_term = 0
@@ -97,11 +98,11 @@ class RaftState:
             
             
     def switch_phase(self): 
-        if  self.life_time >= 75:  
+        if  self.life_time >= self._threshold[0]:
             self.phase = RaftState.PHASE1
-        elif self.life_time >= 50:  
+        elif self.life_time >= self._threshold[1]:
             self.phase = RaftState.PHASE2
-        elif self.life_time >= 20:
+        elif self.life_time >= self._threshold[2]:
             self.phase = RaftState.PHASE3
         else:
             self.phase = RaftState.PHASE4
@@ -181,18 +182,10 @@ class RaftState:
     def notify_subscriber(self):        
         if self.subscriber:
             self.subscriber.update_behavior()
-
    
     def append_entries(self, prev_index, prev_term, entries):
         return append_entries(self.log, prev_index, prev_term, entries)
 
     def copy_state_proxy(self):
-
         return [self.match_index , self.next_index, self.current_term, 
                 self.commit_index, self.last_applied]
-
- 
- 
-    
-
-         
