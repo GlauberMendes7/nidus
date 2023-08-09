@@ -25,8 +25,8 @@ class RaftState:
         self._node_id = node_id
         
         self.subscriber = None
-        self.status = self.FOLLOWER                
-        self._life_time = life_time
+        self.status = self.FOLLOWER
+        self._life_time = life_time + 1 if node_id == "node-0" else life_time
         self._threshold = threshold
         self._phase = None
         

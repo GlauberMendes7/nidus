@@ -81,12 +81,14 @@ class RaftNode(Actor):
 
     def __init__(self, node_id, peers, network, state_machine):       
         
+        self.metric_based = bool(network.config["metric_based"])
         self.field = network.config["metric"]
         self.capacity = network.config["capacity"]
         self.initial = random.uniform(network.config["initial"][0], network.config["initial"][1]) 
         self.rate = network.config["rate"]
         self.threshold = tuple(network.config["threshold"])
         self.bucket = Bucket(self.capacity, self.rate, self.initial)
+        
 
         self.node_id = node_id
         self.peers = peers
@@ -137,11 +139,13 @@ class RaftNode(Actor):
         # add client addr to callbacks so we can notify it of the result once
         # it's been commited
         self.client_callbacks[match_index] = tuple(req.sender)
-        self.state.life_time = self.get_lifetime()
+        self.state.life_time = self.get_lifetime() if self.metric_based else self.get_lifetime_0()
         print(f'{bcolors.WARNING} DECREASING LIFE_TIME. CURRENT: {self.state.life_time}{bcolors.ENDC}')
         # self.phase_behavior()
 
 
+    def get_lifetime_0(self) -> float:
+        return self.state.life_time - 1
 
     def get_lifetime(self) -> float:
         value = self.measure()
