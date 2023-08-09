@@ -83,7 +83,7 @@ class RaftNode(Actor):
         
         self.field = network.config["metric"]
         self.capacity = network.config["capacity"]
-        self.initial = random.randint(network.config["initial"][0], network.config["initial"][1]) 
+        self.initial = random.uniform(network.config["initial"][0], network.config["initial"][1]) 
         self.rate = network.config["rate"]
         self.threshold = tuple(network.config["threshold"])
         self.bucket = Bucket(self.capacity, self.rate, self.initial)
@@ -92,7 +92,7 @@ class RaftNode(Actor):
         self.peers = peers
         self.proxy_id = None
         self.network = network
-        self.state = RaftState(self.network.config["storage_dir"], node_id, initial, threshold)
+        self.state = RaftState(self.network.config["storage_dir"], node_id, self.initial, self.threshold)
         self.state.add_subscriber(self)
         self.state_machine = state_machine
         self.heartbeat_interval = network.config["heartbeat_interval"]
