@@ -1,0 +1,17 @@
+{
+	"cluster": {
+		"node-0": ["localhost", 12000],
+		"node-1": ["localhost", 13000],
+		"node-2": ["localhost", 14000],
+		"node-3": ["localhost", 15000],
+		"node-4": ["localhost", 16000]
+	},
+	"heartbeat_interval": 0.03,
+	"storage_dir": "nidus_logs",
+	"metric": "dev0_package_0",
+	"capacity": 9999999.9,
+	"initial": [ 4444444.4, 6666666.6 ],
+	"rate": 0.0,
+	"threshold": [ 6666666.6, 3333333.3, 1111111.1 ],
+	"metric_based": true
+}
