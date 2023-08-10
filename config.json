@@ -10,7 +10,7 @@
 	"storage_dir": "nidus_logs",
 	"metric": "dev0_package_0",
 	"capacity": 100.0,
-	"initial": [ 50.0, 50.0 ],
+	"initial": [ 70.0, 70.0 ],
 	"rate": 0.0,
 	"threshold": [ 75.0, 50.0, 20.0 ],
 	"metric_based": false

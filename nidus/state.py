@@ -40,8 +40,6 @@ class RaftState:
         self.match_index = {}
         self.next_index = {}
         
-        
-
         term_path = os.path.join(self._storage_dir, f"{self._node_id}.term")
         if os.path.exists(term_path):
             with open(term_path, "rb+") as f:
@@ -82,6 +80,7 @@ class RaftState:
             
             ## TODO chamar executor de comportamento
             
+
     
     @property
     def life_time(self):
@@ -95,6 +94,7 @@ class RaftState:
         if desired_life_time != self._life_time:            
             self._life_time = desired_life_time
             self.switch_phase()            
+            
             
             
     def switch_phase(self): 

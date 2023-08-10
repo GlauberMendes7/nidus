@@ -2,7 +2,8 @@ import logging
 import os
 import random
 import copy
-from threading import Timer
+from threading import Timer, Thread
+import time
 
 from nidus.actors import Actor, get_system
 from nidus.log import LogEntry, clear_upto
@@ -89,7 +90,7 @@ class RaftNode(Actor):
         self.bucket = Bucket(self.capacity, self.rate, self.initial)
         
         self.get_lifetime = self.get_lifetime_metric if self.metric_based else self.get_lifetime_decrement
-
+        self.lifetime_timer = None        
         self.node_id = node_id
         self.peers = peers
         self.proxy_id = None
@@ -107,6 +108,7 @@ class RaftNode(Actor):
         self.leader_id = None
         self.current_behavior = self.update_behavior()
         self.restart_election_timer()
+        self.start_lifetime_timer()
 
     def handle_client_request(self, req):
         """
@@ -139,10 +141,37 @@ class RaftNode(Actor):
         # add client addr to callbacks so we can notify it of the result once
         # it's been commited
         self.client_callbacks[match_index] = tuple(req.sender)
-        self.state.life_time = self.get_lifetime()
+        # self.state.life_time = self.get_lifetime()
         print(f'{bcolors.WARNING} CURRENT LIFE TIME ({self.get_lifetime}): {self.state.life_time}{bcolors.ENDC}')
         # self.phase_behavior()
-   
+    
+    def start_lifetime_timer(self):        
+        self.lifetime_timer = Thread(target=self.consuming_lifetime)
+        self.lifetime_timer.daemon = True
+        """
+        Felipe, aqui o laço de life_time acontece, 
+        hoje imagino que o capacoty que tu implementou
+        é o que manipulamos como lifetime.
+        nesse cenário basta fazer a logica acontecer aqui        
+        """  
+        self.lifetime_timer.start()
+    
+        
+    def consuming_lifetime(self, op: bool=True):
+        while True or op:
+            interval = 15 
+        
+            """
+            Felipe, aqui manipulamos como quisermos        
+            """  
+            self.state.life_time = self.get_lifetime()        
+            
+            self.log(f"Current Lifetime: {self.state.life_time}")
+            time.sleep(interval)
+
+        
+        
+            
     def get_lifetime_decrement(self) -> float:
         return self.state.life_time - 1
 
@@ -473,6 +502,12 @@ class RaftNode(Actor):
         self.execute_behavior(current_behavior)
         return current_behavior
     
+    def shutdown(self):
+        try:
+            os.kill(os.getpid(), os.SIGTERM)
+        except AttributeError:  # Caso o SIGTERM não seja suportado no sistema
+            os._exit(1)
+    
     def execute_behavior(self, current_behavior):    
         role = current_behavior[0]
         match role:
@@ -483,7 +518,7 @@ class RaftNode(Actor):
                 if self.state.phase == RaftState.PHASE2:    
                     # Reduzindo Heartbeats e Avisando Followers                
                     self.advice_peers()
-                    pass
+                    
                 if self.state.phase == RaftState.PHASE3:
                     ### Eleger proxy e passar a comunicar apenas com o proxy
                     self.start_proxy_election() 
@@ -491,7 +526,9 @@ class RaftNode(Actor):
                 if self.state.phase == RaftState.PHASE4:
                     # Vai retornar para o estado de seguidor e se desligar.
                     self.demote()
+                    
                     print("Desligando")
+                    self.shutdown()
         
                                    
             case RaftState.PROXY:
@@ -511,10 +548,12 @@ class RaftNode(Actor):
                     # Enviar Heartbeat para nodes
                     # Reencaminhar mensagens Leader -> Proxy -> Followers
                     # Em operação normal
+                    print("suspension mode")
                     pass
                 if self.state.phase == RaftState.PHASE4:
                     # Avisar ao líder do seu desligamento (o líder deve designar um novo proxy), retornar para papel de seguidor e se desligar
-                    print("desligando")
+                    print("Desligando")
+                    self.shutdown()
                     
 
             case RaftState.FOLLOWER:
@@ -532,7 +571,11 @@ class RaftNode(Actor):
                     print("suspension mode")
                 if self.state.phase == RaftState.PHASE4:
                     # Avisar ao líder do seu desligamento e se desligar
-                    print("desligando")
+                    print("Desligando")
+                    self.shutdown()
+            
+            case RaftState.FOLLOWER:
+                self.proxy_id = None
                 
             case _ : print("Não identificado")
           
