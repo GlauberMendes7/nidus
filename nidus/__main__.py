@@ -6,6 +6,7 @@ from nidus.config import load_user_config
 from nidus.kvstore import KVStore
 from nidus.messages import ClientRequest
 from nidus.raft import RaftNetwork
+from nidus.tracer import Trace
 
 response = queue.Queue()
 
@@ -16,7 +17,8 @@ class Client(Actor):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Start a node or run a client command")
+    parser = argparse.ArgumentParser(
+        description="Start a node or run a client command")
     parser.add_argument(
         "-c", "--config", help="Configuration file to be used for the cluster"
     )
@@ -44,9 +46,11 @@ def main():
     else:
         config = load_user_config(args.config)
         net = RaftNetwork(config, KVStore)
-
         nodes = [net.create_node(n) for n in args.name]
+
         return nodes
 
 
-nodes = main()
+if __name__ == "__main__":
+    with Trace("nidus"):
+        main()

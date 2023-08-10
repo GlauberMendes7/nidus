@@ -1,2 +1,4 @@
 nidus_logs/*
-.venv/*
+**/__pycache__/**
+.venv/**
+**/*.log
