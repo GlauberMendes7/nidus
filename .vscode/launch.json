@@ -1,0 +1,34 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [        
+    
+        {
+            "name": "current",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "node-0",
+            "type": "python",
+            "request": "launch",
+            "module": "nidus",
+            "args": ["--config=config.json","node-0"],
+            "justMyCode": true,
+            "env": {
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        }
+    ]
+}

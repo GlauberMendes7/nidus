@@ -1,0 +1,17 @@
+version: '3.4'
+
+services:
+  nidus:
+    image: nidus
+    container_name: nidus
+    build: ./
+    user: root
+    cap_add:
+      - ALL
+    networks:
+      - nidus
+
+networks:
+  nidus:
+    name: nidus
+    driver: bridge
