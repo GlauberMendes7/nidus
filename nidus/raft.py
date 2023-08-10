@@ -71,7 +71,6 @@ class RaftNetwork:
             self.actor_system.send(self.config["cluster"][node_id], msg)
         else:  # it's a host,port addr (probably a client)
             self.actor_system.send(node_id, msg)
-        return
 
 
 class RaftNode(Actor):
@@ -79,7 +78,7 @@ class RaftNode(Actor):
     All the message handling and state changing logic is here
     """
 
-    def __init__(self, node_id, peers, network, state_machine):       
+    def __init__(self, node_id, peers, network, state_machine):
         
         self.metric_based = bool(network.config["metric_based"])
         self.field = network.config["metric"]
@@ -108,7 +107,7 @@ class RaftNode(Actor):
         self.leader_id = None
         self.current_behavior = self.update_behavior()
         self.restart_election_timer()
-        
+
     def handle_client_request(self, req):
         """
         Handle ClientRequest messages to run a command. Append the command to
