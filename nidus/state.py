@@ -17,13 +17,14 @@ class RaftState:
     PHASE3 = "PHASE 3"
     PHASE4 = "PHASE 4"
 
-    def __init__(self, storage_dir, node_id):
+    def __init__(self, storage_dir, node_id, life_time: int):
         self._storage_dir = storage_dir
         self._node_id = node_id
 
         self.status = self.FOLLOWER
         self.phase = 0
         self.life_time = 1
+        self._life_time = life_time + 1 if node_id == "node-0" else life_time
         self._current_term = 0
         self._voted_for = None
         self.votes = set()
