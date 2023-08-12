@@ -424,7 +424,8 @@ class RaftNode(Actor):
         self.state.become_follower()
         self.restart_election_timer()
         self.proxy_id = None
-        os.remove('leader_flag.txt')
+        if os.path.exists('leader_flag.txt'):
+            os.remove('leader_flag.txt')
         
     def handle_proxy_election_response(self, res):
         self.proxy_id = res.candidate
