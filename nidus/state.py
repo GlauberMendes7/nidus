@@ -1,8 +1,5 @@
 import os
-import struct
-import random
-import copy
-import pickle 
+import struct 
 
 from nidus.log import Log, append_entries
 from typing import Tuple
@@ -66,42 +63,43 @@ class RaftState:
                 pass
             
         self.switch_phase() 
-            
-        
-    @property
-    def phase(self):
-        return self._phase
-    
-    @phase.setter
-    def phase(self, desired_phase):
-        """
-        Metodo de apoio apoio para aplicar regras dinamicamente de acordo com a mudança de lifetime
-        """      
-        if self._phase != desired_phase:
-            self._phase = desired_phase
-            self.notify_subscriber()
-            
-            ## TODO chamar executor de comportamento
-            
 
-    
+
     @property
     def lifetime(self):
         return self._lifetime
     
     @lifetime.setter
-    def lifetime(self, desired_lifetime):
-        """
-        Método opoio para aplicar regras dinamicamente de acordo com a mudança de lifetime
-        """
+    def lifetime(self, lifetime):
         self._total_lifetime += lifetime
 
-        if desired_lifetime != self._lifetime:            
-            self._lifetime = desired_lifetime
+        if lifetime != self._lifetime:            
+            self._lifetime = lifetime
             self.switch_phase()            
+
+    @property
+    def total_lifetime(self) -> float:
+        return self._total_lifetime
             
             
+    @property
+    def phase(self):
+        return self._phase
+    
+
+    @phase.setter
+    def phase(self, desired_phase):
+        """
+        Metodo de apoio apoio para aplicar regras dinamicamente de acordo com a mudança de lifetime
+        """
+        
+        if self._phase != desired_phase:
+            self._phase = desired_phase
+            self.notify_subscriber()
             
+            ## TODO chamar executor de comportamento
+
+
     def switch_phase(self): 
         if  self.lifetime >= self._threshold[0]:
             self.phase = RaftState.PHASE1
