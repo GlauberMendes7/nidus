@@ -4,6 +4,8 @@ import random
 import copy
 from threading import Timer, Thread
 import time
+from pathlib import Path
+
 
 from nidus.actors import Actor, get_system
 from nidus.log import LogEntry, clear_upto
@@ -412,6 +414,7 @@ class RaftNode(Actor):
         self.election_timer.cancel()
         # should we skip the send to ourself and just invoke?
         self.network.send(self.node_id, heartbeat_request)
+        Path('leader_flag.txt').touch()
 
 
     def demote(self):
@@ -421,7 +424,7 @@ class RaftNode(Actor):
         self.state.become_follower()
         self.restart_election_timer()
         self.proxy_id = None
-        
+        os.remove('leader_flag.txt')
         
     def handle_proxy_election_response(self, res):
         self.proxy_id = res.candidate

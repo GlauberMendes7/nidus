@@ -12,9 +12,14 @@ def call_terminal_command(command):
         return ""
 
 # Request
-# host="10.7.125.172:12000"
-host="127.0.0.1:12000"
-request = f"python -m nidus --leader={host} SET requests req "
+# leader="10.7.125.172:12000"
+# leader="127.0.0.1:12000"
+
+leader=""
+with open('leader.txt', 'r') as f:
+    leader = f.read()
+
+request = f"python -m nidus --leader={leader} SET requests req "
 
 # Configuração do logger
 log_filename = f'{time.strftime("%Y%m%d-%H%M%S")}_{os.getpid()}_requests.log'
