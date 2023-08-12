@@ -1,37 +1,46 @@
-import subprocess
-import time
+import asyncio
 import logging
-import os
+import subprocess
 
-def call_terminal_command(command):
+async def call_terminal_command(command, index):
     try:
-        result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
-        return result.stdout
+        result = await asyncio.to_thread(subprocess.run, command, shell=True, check=True, capture_output=True, text=True)
+        return f"Execução {index} - Saída:\n{result.stdout}"
     except subprocess.CalledProcessError as err:
-        logging.error(f"Erro ao executar a request: {err}")
-        return ""
+        return f"Execução {index} - Erro ao executar a request: {err}"
 
-# Request
-# leader="10.7.125.172:12000"
-# leader="127.0.0.1:12000"
+async def main():
 
-leader=""
-with open('leader.txt', 'r') as f:
-    leader = f.read()
+    leader=""
+    with open('leader.txt', 'r') as f:
+        leader = f.read()
+    # Request
+    host = "10.7.125.172:12000"
+    # host = "127.0.0.1:12000"
+    request = f"python -m nidus --leader={leader.rstrip()} SET requests req "
 
-request = f"python -m nidus --leader={leader} SET requests req "
+    # Configuração do logger
+    log_filename = "requests.log"
+    logging.basicConfig(filename=log_filename, level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Configuração do logger
-log_filename = f'{time.strftime("%Y%m%d-%H%M%S")}_{os.getpid()}_requests.log'
-logging.basicConfig(filename=log_filename, level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    # Criar tarefas assíncronas para as chamadas ao terminal
+    tasks = []
+    for i in range(1, 70):
+        full_request = f"{request} {i}"
+        task = asyncio.create_task(call_terminal_command(full_request, i))
+        tasks.append(task)
+        await asyncio.sleep(0.5)
 
-# Requests ao lider para adicionar valores 30 vezes com um intervalo de 2 segundos
-for i in range(1, 31):
-    full_request = f"{request} {i}"
-    output = call_terminal_command(full_request)
-    log_message = f"INPUT: {full_request}\nOUTPUT: {output}"
-    logging.info(log_message)
-    print(log_message)
-    time.sleep(2)
+    # Aguardar todas as tarefas assíncronas
+    # responses = await asyncio.gather(*tasks)
 
-print("final da execução")
+    # # Registrar e imprimir as respostas
+    # for response in responses:
+    #     logging.info(response)
+    #     print(response)
+
+    print("Final da execução")
+
+# Executar o loop de eventos assíncronos
+if __name__ == "__main__":
+    asyncio.run(main())
