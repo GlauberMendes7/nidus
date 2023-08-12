@@ -13,5 +13,6 @@
 	"initial": [ 70.0, 70.0 ],
 	"rate": 0.0,
 	"threshold": [ 75.0, 50.0, 20.0 ],
+	"interval": 1,
 	"metric_based": false
 }

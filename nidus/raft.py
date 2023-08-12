@@ -87,15 +87,16 @@ class RaftNode(Actor):
         self.initial = random.uniform(network.config["initial"][0], network.config["initial"][1]) 
         self.rate = network.config["rate"]
         self.threshold = tuple(network.config["threshold"])
-        self.bucket = Bucket(self.capacity, self.rate, self.initial)
-        
+        self.bucket = Bucket(self.capacity, self.rate, self.initial)        
         self.get_lifetime = self.get_lifetime_metric if self.metric_based else self.get_lifetime_decrement
-        self.lifetime_timer = None        
+        self.lifetime_timer = None
+        self.interval = int(network.config["interval"])
+
         self.node_id = node_id
         self.peers = peers
         self.proxy_id = None
         self.network = network
-        self.state = RaftState(self.network.config["storage_dir"], node_id, network.config["capacity"], self.threshold)
+        self.state = RaftState(self.network.config["storage_dir"], node_id, self.initial, self.threshold)
         self.state.add_subscriber(self)
         self.state_machine = state_machine
         self.heartbeat_interval = network.config["heartbeat_interval"]
@@ -103,7 +104,7 @@ class RaftNode(Actor):
         self.election_timer = None
         self.proxy_timer = None
         # dict of log_index: addr where log_index is the index a client is
-        # waiting to be commited
+        # waiting to be committed
         self.client_callbacks = {}
         self.leader_id = None
         self.current_behavior = self.update_behavior()
@@ -141,45 +142,34 @@ class RaftNode(Actor):
         # add client addr to callbacks so we can notify it of the result once
         # it's been commited
         self.client_callbacks[match_index] = tuple(req.sender)
-        # self.state.life_time = self.get_lifetime()
-        print(f'{bcolors.WARNING} CURRENT LIFE TIME: {self.state.life_time}{bcolors.ENDC}')
+        # self.state.lifetime = self.get_lifetime()
+        print(f'{bcolors.WARNING} CURRENT LIFE TIME ({self.get_lifetime}): {self.state.lifetime}{bcolors.ENDC}')
         # self.phase_behavior()
     
     def start_lifetime_timer(self):        
-        self.lifetime_timer = Thread(target=self.consuming_lifetime)
-        self.lifetime_timer.daemon = True
-        """
-        Felipe, aqui o laço de life_time acontece, 
-        hoje imagino que o capacoty que tu implementou
-        é o que manipulamos como lifetime.
-        nesse cenário basta fazer a logica acontecer aqui        
-        """  
+        self.lifetime_timer = Thread(target=self.consuming_lifetime, daemon = True)
         self.lifetime_timer.start()
     
         
-    def consuming_lifetime(self, op: bool=True, interval: int=15):
-        while True or op:
-        
-            """
-            Felipe, aqui manipulamos como quisermos        
-            """  
-            self.state.life_time = self.get_lifetime()        
-            
-            self.log(f"Current Lifetime: {self.state.life_time}")
-            time.sleep(interval)
+    def consuming_lifetime(self):
+        while True:
+            self.state.lifetime = self.get_lifetime()
 
-        
-        
+            self.log(f"Current lifetime: {self.state.lifetime}")
+            self.log(f"Total lifetime: {self.state.total_lifetime}")
+
+            time.sleep(self.interval)
             
     def get_lifetime_decrement(self) -> float:
-        return self.state.life_time - 1
+        return self.state.lifetime - 1
 
     def get_lifetime_metric(self) -> float:
-        value = self.measure()
-        self.bucket.consume(value)
-        return self.capacity - self.bucket.value
+        # value = self.measure_metric()
+        # self.bucket.consume(value)
+        # return self.capacity - self.bucket.value
+        return self.measure_metric()
 
-    def measure(self) -> float:
+    def measure_metric(self) -> float:
         with Measure() as measure:
             delta = measure.take_snapshot_delta()
             if self.field not in delta:
@@ -205,7 +195,7 @@ class RaftNode(Actor):
         # Reply false if term < currentterm (§5.1)
         if req.term < self.state.current_term :
             res = AppendEntriesResponse(
-                self.node_id, self.state.current_term, False, len(self.state.log) - 1, self.state.life_time
+                self.node_id, self.state.current_term, False, len(self.state.log) - 1, self.state.lifetime
             )
             self.network.send(req.sender, res)
             return
@@ -227,7 +217,7 @@ class RaftNode(Actor):
             match_index = 0
 
         res = AppendEntriesResponse(
-            self.node_id, self.state.current_term, success, match_index, self.state.life_time
+            self.node_id, self.state.current_term, success, match_index, self.state.lifetime
         )
         self.network.send(req.sender, res)
         self.apply_any_commits()
@@ -243,7 +233,7 @@ class RaftNode(Actor):
                 res.match_index, self.state.match_index[sender]
             )
             self.state.next_index[sender] = self.state.match_index[sender] + 1
-            self.state.proxy_candidates[sender] = res.life_time
+            self.state.proxy_candidates[sender] = res.lifetime
         else:
             self.state.next_index[sender] = max(0, self.state.next_index[sender] - 1)
 
@@ -269,13 +259,13 @@ class RaftNode(Actor):
 
     def handle_vote_request(self, req):
         self.restart_election_timer()
-        if req.life_time <= self.state.life_time:
-            vote_msg = VoteResponse(self.node_id, self.state.current_term, False, self.state.life_time)
-            self.log(f"vote request from {req.candidate}:{req.life_time} granted=False (candidate life_time lower than my self: {self.state.life_time})" )
+        if req.lifetime <= self.state.lifetime:
+            vote_msg = VoteResponse(self.node_id, self.state.current_term, False, self.state.lifetime)
+            self.log(f"vote request from {req.candidate}:{req.lifetime} granted=False (candidate lifetime lower than my self: {self.state.lifetime})" )
             self.network.send(req.candidate, vote_msg)
             return
 
-        if (req.life_time > self.state.life_time and 
+        if (req.lifetime > self.state.lifetime and 
             self.state.status != RaftState.FOLLOWER or self.state.status != RaftState.PROXY ):
             self.state.current_term = req.term
             self.demote()
@@ -285,8 +275,8 @@ class RaftNode(Actor):
         # votedFor is null or candidateId, and candidate’s log is atleast as up-to-date
         # as receiver’s log, grant vote (§5.2, §5.4)
         if (self.state.voted_for is None  or self.state.voted_for == req.candidate
-                and (req.life_time > self.state.life_time)):
-            vote_msg = VoteResponse(self.node_id, self.state.current_term, True, self.state.life_time)
+                and (req.lifetime > self.state.lifetime)):
+            vote_msg = VoteResponse(self.node_id, self.state.current_term, True, self.state.lifetime)
             self.state.voted_for = req.candidate
             self.log(f"vote request from {req.candidate} granted=True")
             self.network.send(req.candidate, vote_msg)
@@ -294,13 +284,13 @@ class RaftNode(Actor):
 
         # is this ok to default to?
         self.log(
-            f"vote request from {req.candidate} granted=False (vote already granted or life_time lower than self {self.state.life_time})"
+            f"vote request from {req.candidate} granted=False (vote already granted or lifetime lower than self {self.state.lifetime})"
         )
-        vote_msg = VoteResponse(self.node_id, self.state.current_term, False, self.state.life_time)
+        vote_msg = VoteResponse(self.node_id, self.state.current_term, False, self.state.lifetime)
         self.network.send(req.candidate, vote_msg)
 
     def handle_vote_response(self, res):
-        if res.life_time > self.state.life_time:
+        if res.lifetime > self.state.lifetime:
             self.demote()
 
         if self.state.status != RaftState.CANDIDATE:
@@ -312,7 +302,7 @@ class RaftNode(Actor):
 
         if len(self.state.votes) > (len(self.peers) + 1) // 2:
             self.log(
-                f"{bcolors.OKCYAN} majority of votes granted {self.state.votes}, transitoning to leader with {self.state.life_time} autonomy{bcolors.ENDC}"
+                f"{bcolors.OKCYAN} majority of votes granted {self.state.votes}, transitoning to leader with {self.state.lifetime} autonomy{bcolors.ENDC}"
             )
             self.promote()
 
@@ -363,8 +353,8 @@ class RaftNode(Actor):
                         
     def handle_election_request(self, req):
         self.log(
-            f"haven't heard from leader or election failed; beginning election. Lifetime is: {self.state.life_time} and current phase is: {self.state.phase}")
-        self.state.become_candidate(self.node_id, self.state.life_time)
+            f"haven't heard from leader or election failed; beginning election. Lifetime is: {self.state.lifetime} and current phase is: {self.state.phase}")
+        self.state.become_candidate(self.node_id, self.state.lifetime)
         prev_index = len(self.state.log) - 1
         if prev_index >= 0:
             prev_term = self.state.log[prev_index].term
@@ -374,7 +364,7 @@ class RaftNode(Actor):
         self.restart_election_timer()
         for peer in self.peers:
             vote_msg = VoteRequest(
-                self.state.current_term, self.node_id, prev_index, prev_term, self.state.life_time
+                self.state.current_term, self.node_id, prev_index, prev_term, self.state.lifetime
             )
             self.network.send(peer, vote_msg)
 
@@ -557,7 +547,7 @@ class RaftNode(Actor):
 
             case RaftState.FOLLOWER:
                 self.proxy_id = None
-                print (f"Aqui vai a logica de seguidor {self.state.life_time}")
+                print (f"Aqui vai a logica de seguidor {self.state.lifetime}")
                 if self.state.phase == RaftState.PHASE1:
                     # Em operação normal
                     pass
@@ -593,5 +583,5 @@ class RaftNode(Actor):
     match_index: {self.state.match_index}
     next_index: {self.state.next_index}
     log:{self.state.log}
-    life_time: {self.state.life_time}
+    lifetime: {self.state.lifetime}
 >"""

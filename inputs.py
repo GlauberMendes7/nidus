@@ -1,7 +1,7 @@
 import subprocess
-import asyncio
 import time
 import logging
+import os
 
 def call_terminal_command(command):
     try:
@@ -11,11 +11,13 @@ def call_terminal_command(command):
         logging.error(f"Erro ao executar a request: {err}")
         return ""
 
-# Request 
-request = "python -m nidus --leader=10.7.125.172:12000 SET requests req "
+# Request
+# host="10.7.125.172:12000"
+host="127.0.0.1:12000"
+request = f"python -m nidus --leader={host} SET requests req "
 
 # Configuração do logger
-log_filename = "requests_log.txt"
+log_filename = f'{time.strftime("%Y%m%d-%H%M%S")}_{os.getpid()}_requests.log'
 logging.basicConfig(filename=log_filename, level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Requests ao lider para adicionar valores 30 vezes com um intervalo de 2 segundos

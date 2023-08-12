@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "bcolors",
         "getpid",
         "kvstore",
         "measureit",

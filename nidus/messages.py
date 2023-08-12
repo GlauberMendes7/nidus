@@ -54,7 +54,7 @@ class AppendEntriesResponse:
     term: int
     success: bool
     match_index: int
-    life_time : int
+    lifetime : int
     msg_type: str = "append_entries_response"
 
 
@@ -65,7 +65,7 @@ class VoteRequest:
     candidate: str
     last_log_index: int
     last_log_term: int
-    life_time : int
+    lifetime : int
     msg_type: str = "vote_request"
     
 
@@ -76,7 +76,7 @@ class VoteResponse:
     sender: str
     term: int
     vote_granted: bool
-    life_time: int
+    lifetime: int
     msg_type: str = "vote_response"
     cause: str = "Requirements problem"
 
@@ -101,14 +101,14 @@ class ElectionRequest:
 @dataclass
 class ProxyRequest:
     candidate: str
-    life_time: int
+    lifetime: int
     msg_type: str = "proxy_request"
 
 @dataclass
 class ProxyResponse:
     sender: str
     candidate: str
-    life_time: int
+    lifetime: int
     msg_type: str = "proxy_response"
 
 @dataclass

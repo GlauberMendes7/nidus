@@ -83,7 +83,9 @@ def main():
     with Measure() as measure:
         for i in range(10):
             foo()
-            print(measure.take_snapshot_delta())
+            print("[take_snapshot] %s" % measure.take_snapshot())
+            print("[take_snapshot_delta]  %s" % measure.take_snapshot_delta())
+            print()
 
 
 if __name__ == "__main__":

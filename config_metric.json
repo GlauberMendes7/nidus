@@ -13,5 +13,6 @@
 	"initial": [ 4444444.4, 6666666.6 ],
 	"rate": 0.0,
 	"threshold": [ 6666666.6, 3333333.3, 1111111.1 ],
+	"interval": 1,
 	"metric_based": true
 }

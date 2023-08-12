@@ -20,13 +20,16 @@ class RaftState:
     PHASE3 = "PHASE 3"
     PHASE4 = "PHASE 4"
 
-    def __init__(self, storage_dir, node_id, life_time: float, threshold: Tuple[float, float, float]):
+    def __init__(self, storage_dir, node_id, lifetime: float, threshold: Tuple[float, float, float]):
+        # self._lifetime = lifetime if node_id == "node-0" else lifetime -10000000.0
+        self._lifetime: float = lifetime + 1 if node_id == "node-0" else lifetime
+        self._total_lifetime: float = 0
+
         self._storage_dir = storage_dir
         self._node_id = node_id
 
         self.subscriber = None
         self.status = self.FOLLOWER
-        self._life_time = life_time if node_id == "node-0" else life_time -10000000.0
         self._threshold = threshold
         self._phase = None
         
@@ -39,7 +42,7 @@ class RaftState:
         self.last_applied = -1
         self.match_index = {}
         self.next_index = {}
-        
+
         term_path = os.path.join(self._storage_dir, f"{self._node_id}.term")
         if os.path.exists(term_path):
             with open(term_path, "rb+") as f:
@@ -72,9 +75,9 @@ class RaftState:
     @phase.setter
     def phase(self, desired_phase):
         """
-        Metodo de apoio apoio para aplicar regras dinamicamente de acordo com a mudança de life_time
+        Metodo de apoio apoio para aplicar regras dinamicamente de acordo com a mudança de lifetime
         """      
-        if self._phase != desired_phase:            
+        if self._phase != desired_phase:
             self._phase = desired_phase
             self.notify_subscriber()
             
@@ -83,26 +86,28 @@ class RaftState:
 
     
     @property
-    def life_time(self):
-        return self._life_time
+    def lifetime(self):
+        return self._lifetime
     
-    @life_time.setter
-    def life_time(self, desired_life_time):
+    @lifetime.setter
+    def lifetime(self, desired_lifetime):
         """
-        Método opoio para aplicar regras dinamicamente de acordo com a mudança de life_time
-        """        
-        if desired_life_time != self._life_time:            
-            self._life_time = desired_life_time
+        Método opoio para aplicar regras dinamicamente de acordo com a mudança de lifetime
+        """
+        self._total_lifetime += lifetime
+
+        if desired_lifetime != self._lifetime:            
+            self._lifetime = desired_lifetime
             self.switch_phase()            
             
             
             
     def switch_phase(self): 
-        if  self.life_time >= self._threshold[0]:
+        if  self.lifetime >= self._threshold[0]:
             self.phase = RaftState.PHASE1
-        elif self.life_time >= self._threshold[1]:
+        elif self.lifetime >= self._threshold[1]:
             self.phase = RaftState.PHASE2
-        elif self.life_time >= self._threshold[2]:
+        elif self.lifetime >= self._threshold[2]:
             self.phase = RaftState.PHASE3
         else:
             self.phase = RaftState.PHASE4
@@ -148,9 +153,9 @@ class RaftState:
         self.voted_for = None
         self.notify_subscriber()
 
-    def become_candidate(self, node_id, life_time):
+    def become_candidate(self, node_id, lifetime):
         self.status = self.CANDIDATE
-        self.life_time = life_time
+        self.lifetime = lifetime
         self.current_term += 1
         self.voted_for = node_id
         self.votes = set([node_id])
