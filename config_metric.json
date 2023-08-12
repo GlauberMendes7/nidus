@@ -9,10 +9,10 @@
 	"heartbeat_interval": 0.03,
 	"storage_dir": "nidus_logs",
 	"metric": "dev0_package_0",
-	"capacity": 9999999.9,
-	"initial": [ 4444444.4, 6666666.6 ],
+	"capacity": 2200.0,
+	"initial": [ 2200.00, 2200.0 ],
 	"rate": 0.0,
-	"threshold": [ 6666666.6, 3333333.3, 1111111.1 ],
+	"threshold": [ 0.75, 0.50, 0.20 ],
 	"interval": 1,
 	"scale": 10000000000,
 	"metric_based": true
