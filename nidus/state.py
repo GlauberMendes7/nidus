@@ -20,13 +20,13 @@ class RaftState:
     PHASE3 = "PHASE 3"
     PHASE4 = "PHASE 4"
 
-    def __init__(self, storage_dir, node_id, life_time: int, threshold: Tuple[float, float, float]):
+    def __init__(self, storage_dir, node_id, life_time: float, threshold: Tuple[float, float, float]):
         self._storage_dir = storage_dir
         self._node_id = node_id
-        
+
         self.subscriber = None
         self.status = self.FOLLOWER
-        self._life_time = life_time + 1 if node_id == "node-0" else life_time
+        self._life_time = life_time if node_id == "node-0" else life_time -10000000.0
         self._threshold = threshold
         self._phase = None
         

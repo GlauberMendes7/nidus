@@ -95,7 +95,7 @@ class RaftNode(Actor):
         self.peers = peers
         self.proxy_id = None
         self.network = network
-        self.state = RaftState(self.network.config["storage_dir"], node_id, self.initial, self.threshold)
+        self.state = RaftState(self.network.config["storage_dir"], node_id, network.config["capacity"], self.threshold)
         self.state.add_subscriber(self)
         self.state_machine = state_machine
         self.heartbeat_interval = network.config["heartbeat_interval"]
@@ -142,7 +142,7 @@ class RaftNode(Actor):
         # it's been commited
         self.client_callbacks[match_index] = tuple(req.sender)
         # self.state.life_time = self.get_lifetime()
-        print(f'{bcolors.WARNING} CURRENT LIFE TIME ({self.get_lifetime}): {self.state.life_time}{bcolors.ENDC}')
+        print(f'{bcolors.WARNING} CURRENT LIFE TIME: {self.state.life_time}{bcolors.ENDC}')
         # self.phase_behavior()
     
     def start_lifetime_timer(self):        
@@ -157,9 +157,8 @@ class RaftNode(Actor):
         self.lifetime_timer.start()
     
         
-    def consuming_lifetime(self, op: bool=True):
+    def consuming_lifetime(self, op: bool=True, interval: int=15):
         while True or op:
-            interval = 15 
         
             """
             Felipe, aqui manipulamos como quisermos        
@@ -525,10 +524,10 @@ class RaftNode(Actor):
                     print("Convocando um proxy")
                 if self.state.phase == RaftState.PHASE4:
                     # Vai retornar para o estado de seguidor e se desligar.
-                    self.demote()
+                    #self.demote()
                     
                     print("Desligando")
-                    self.shutdown()
+                    # self.shutdown()
         
                                    
             case RaftState.PROXY:
@@ -553,12 +552,12 @@ class RaftNode(Actor):
                 if self.state.phase == RaftState.PHASE4:
                     # Avisar ao líder do seu desligamento (o líder deve designar um novo proxy), retornar para papel de seguidor e se desligar
                     print("Desligando")
-                    self.shutdown()
+                    # self.shutdown()
                     
 
             case RaftState.FOLLOWER:
                 self.proxy_id = None
-                print ("Aqui vai a logica de seguidor")
+                print (f"Aqui vai a logica de seguidor {self.state.life_time}")
                 if self.state.phase == RaftState.PHASE1:
                     # Em operação normal
                     pass
@@ -572,7 +571,7 @@ class RaftNode(Actor):
                 if self.state.phase == RaftState.PHASE4:
                     # Avisar ao líder do seu desligamento e se desligar
                     print("Desligando")
-                    self.shutdown()
+                    # self.shutdown()
             
             case RaftState.FOLLOWER:
                 self.proxy_id = None
