@@ -167,7 +167,7 @@ class RaftNode(Actor):
         # value = self.measure_metric()
         # self.bucket.consume(value)
         # return self.capacity - self.bucket.value
-        return self.measure_metric()
+        return max(self.state.lifetime - self.measure_metric(), 0)
 
     def measure_metric(self) -> float:
         with Measure() as measure:
