@@ -80,8 +80,12 @@ class RaftState:
     @property
     def total_lifetime(self) -> float:
         return self._total_lifetime
-            
-            
+
+    @total_lifetime.setter
+    def total_lifetime(self, total_lifetime):
+        self._total_lifetime = total_lifetime         
+
+
     @property
     def phase(self):
         return self._phase

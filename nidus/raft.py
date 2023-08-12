@@ -25,7 +25,6 @@ from nidus.messages import (
 from nidus.state import RaftState
 
 from nidus.measurer import Measure
-from nidus.bucket import Bucket
 
 logger = logging.getLogger("node_logger")
 
@@ -87,10 +86,10 @@ class RaftNode(Actor):
         self.initial = random.uniform(network.config["initial"][0], network.config["initial"][1]) 
         self.rate = network.config["rate"]
         self.threshold = tuple(network.config["threshold"])
-        self.bucket = Bucket(self.capacity, self.rate, self.initial)        
         self.get_lifetime = self.get_lifetime_metric if self.metric_based else self.get_lifetime_decrement
         self.lifetime_timer = None
         self.interval = int(network.config["interval"])
+        self.scale = int(network.config["scale"])
 
         self.node_id = node_id
         self.peers = peers
@@ -132,7 +131,7 @@ class RaftNode(Actor):
         success = self.state.append_entries(prev_index, prev_term, entries)
         if not success:
             raise Exception("This shouldn't happen!")
-        self.log(f"append_entries success={success} entries={entries}")
+        # self.log(f"append_entries success={success} entries={entries}")
 
         # update leaders match/next index
         match_index = len(self.state.log) - 1
@@ -154,7 +153,6 @@ class RaftNode(Actor):
     def consuming_lifetime(self):
         while True:
             self.state.lifetime = self.get_lifetime()
-
             self.log(f"Current lifetime: {self.state.lifetime}")
             self.log(f"Total lifetime: {self.state.total_lifetime}")
 
@@ -164,18 +162,17 @@ class RaftNode(Actor):
         return self.state.lifetime - 1
 
     def get_lifetime_metric(self) -> float:
-        # value = self.measure_metric()
-        # self.bucket.consume(value)
-        # return self.capacity - self.bucket.value
-        return max(self.state.lifetime - self.measure_metric(), 0)
+        metric = self.measure_metric()
+        self.state.total_lifetime -= metric
+        return max(self.state.lifetime - metric, 0)
 
     def measure_metric(self) -> float:
         with Measure() as measure:
-            delta = measure.take_snapshot_delta()
+            delta = measure.take_snapshot()
             if self.field not in delta:
                 raise ValueError("Field not found (%s)" % self.field)
             
-            value = delta[self.field]
+            value = delta[self.field] / self.scale
         
         return value
 
